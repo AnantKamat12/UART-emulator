@@ -8,6 +8,8 @@ The goal of this project is to understand how UART communication works internall
 Rather than interacting with a real UART peripheral, this emulator focuses on accurately modeling UART behavior in software, making it suitable for learning embedded systems, firmware architecture, and communication protocol design.
 
 ---
+#Started 9/8/2026
+#Deadline 21/8/2026
 
 # 🎯 Project Goals
 
