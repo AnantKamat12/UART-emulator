@@ -126,7 +126,7 @@ UART-Emulator/
 │   ├── __init__.py
 │   ├── frame/
 │   │   ├── __init__.py
-│   │   ├── frame.py
+│   │   ├── frame.py & UArtConfig.y
 │   │   └── parity.py
 │   │
 │   ├── fsm/
