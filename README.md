@@ -1,285 +1,120 @@
-````markdown
 # UART-Emulator
 
-A modular UART protocol simulator built in Python to model asynchronous serial communication without requiring physical hardware.
+A Python-based UART protocol emulator designed to model asynchronous serial communication without requiring physical hardware.
 
-The goal of this project is to understand how UART communication works internally by building every component from first principles—including framing, transmission, reception, finite state machines, timing, and error injection.
+The project focuses on understanding UART from the bit level upward: frame generation, serialization, timing, finite state machines, error injection, and verification.
 
-Rather than interacting with a real UART peripheral, this emulator focuses on accurately modeling UART behavior in software, making it suitable for learning embedded systems, firmware architecture, and communication protocol design.
-
----
-#Started 9/8/2026
-#Deadline 21/8/2026
-
-# 🎯 Project Goals
-
-- Build a complete UART communication simulator entirely in Python.
-- Understand UART protocol from the bit level rather than using existing libraries.
-- Model realistic communication between two virtual hosts.
-- Implement sender and receiver finite state machines.
-- Simulate timing, latency, and communication errors.
-- Build reusable protocol infrastructure that can later support other communication protocols.
+**Started:** 09/08/2026  
+**Target completion:** 21/08/2026
 
 ---
 
-# 📚 Learning Objectives
+## 🎯 Project Goals
 
-This project focuses on understanding:
+- Model UART communication between two virtual hosts.
+- Implement UART framing from first principles.
+- Simulate TX and RX behavior using finite state machines.
+- Model baud-rate-dependent timing.
+- Simulate communication-channel delay and bit corruption.
+- Build deterministic tests for normal and erroneous communication.
+
+---
+
+## 📚 Learning Objectives
 
 - UART asynchronous communication
-- TX and RX communication
-- UART frame generation
-- Bit serialization
-- Receiver synchronization
+- Start, data, parity, and stop bits
+- Bit serialization and deserialization
 - Baud rate and timing
-- Error detection
-- Finite State Machines (FSM)
-- Software architecture for communication protocols
+- TX/RX finite state machines
+- Parity and framing errors
+- Buffer behavior
+- Protocol-oriented software architecture
+- Firmware validation concepts
 
 ---
 
-# 🛠 Technology Stack
-
-- Python 3.x
-- Object-Oriented Programming
-- Finite State Machines
-- Binary Data Manipulation
-- Git & GitHub
-- Pytest (future)
-
----
-
-# 🏗 Planned Architecture
+# 🏗 Architecture
 
 ```text
-Application
+                         UART EMULATOR
 
-        │
-
-        ▼
-
-UART Driver
-
-        │
-
-        ▼
-
-UART Transmitter FSM
-
-        │
-
-        ▼
-
-UART Frame Generator
-
-        │
-
-        ▼
-
-Virtual Wire / Channel
-
-        │
-
-        ▼
-
-UART Receiver FSM
-
-        │
-
-        ▼
-
-Application
-```
-
-The communication channel will later support configurable delay, corruption, and transmission errors to emulate real-world communication.
-
----
-
-# 🚀 Development Roadmap
-
-## Phase 1 — Learn UART
-
-Before writing code, understand the protocol completely.
-
-Topics:
-
-- UART asynchronous communication
-- TX/RX lines
-- Idle line
-- Start bit
-- Data bits
-- Parity
-- Stop bit
-- Baud rate
-- UART timing
-- Framing errors
-- Parity errors
-- Overrun errors
-- Basic UART registers
-
----
-
-## Phase 2 — Design
-
-Design the software architecture before implementation.
-
-Planned components:
-
-- UARTFrame
-- UARTHost
-- UARTDriver
-- UARTChannel
-- UARTTransmitterFSM
-- UARTReceiverFSM
-
----
-
-## Phase 3 — Implementation
-
-### Version 1
-
-Transmit a single byte.
-
-```text
-'A'
-
-↓
-
-UART Frame
-
-↓
-
-Virtual Wire
-
-↓
-
-Receiver
-
-↓
-
-'A'
+        HOST A                                      HOST B
+   ┌──────────────┐                           ┌──────────────┐
+   │ Application  │                           │ Application  │
+   └──────┬───────┘                           └──────▲───────┘
+          │                                          │
+          ▼                                          │
+   ┌──────────────┐                           ┌──────────────┐
+   │  Segmenter   │                           │  Reassembler │
+   └──────┬───────┘                           └──────▲───────┘
+          │                                          │
+          ▼                                          │
+   ┌──────────────┐                           ┌──────────────┐
+   │ UART Frame   │                           │ UART Receiver│
+   │  Generator   │                           │     FSM      │
+   └──────┬───────┘                           └──────▲───────┘
+          │                                          │
+          ▼                                          │
+   ┌──────────────┐                           ┌──────────────┐
+   │ UART TX FSM  │                           │ UART RX FSM  │
+   └──────┬───────┘                           └──────▲───────┘
+          │                                          │
+          └──────────────┐            ┌──────────────┘
+                         ▼            │
+                 ┌────────────────────────┐
+                 │    Virtual Channel     │
+                 │                        │
+                 │  • Delay               │
+                 │  • Bit Flip            │
+                 │  • Noise (future)      │
+                 └────────────────────────┘
 ```
 
 ---
 
-### Version 2
+## ⚙️ Configuration and Composition
 
-Transmit complete strings.
+`UARTConfig` defines the UART operating parameters:
 
----
+```text
+UARTConfig
+├── baud_rate
+├── data_bits
+├── parity
+└── stop_bits
+```
 
-### Version 3
+Components **use** the configuration rather than inheriting from it.
 
-Introduce baud-rate simulation.
+```text
+                    UARTConfig
+                   /          \
+                  ▼            ▼
+              Host A         Host B
+              /   \          /   \
+            TX     RX       TX     RX
+             │     │        │     │
+             └─────┘        └──────┘
+```
 
----
+The main components are:
 
-### Version 4
+- `UARTConfig` — UART operating parameters
+- `UARTFrame` — represents a UART frame
+- `Segmenter` — converts application data into bytes
+- `UARTTransmitter` — TX state machine and serialization
+- `UARTReceiver` — RX state machine and deserialization
+- `VirtualChannel` — models transmission delay and corruption
+- `Host` — represents a UART communication endpoint
 
-Add parity generation and checking.
-
----
-
-### Version 5
-
-Simulate framing errors.
-
----
-
-### Version 6
-
-Introduce communication noise and corruption.
-
----
-
-### Version 7
-
-Implement receive/transmit buffers.
-
----
-
-### Version 8
-
-Simulate UART interrupts.
+Composition is intentionally preferred over forcing unrelated components into an inheritance hierarchy.
 
 ---
 
-# 🔧 Planned Features
+## 📁 Project Structure
 
-- UART Frame generation
-- UART Frame parsing
-- Sender FSM
-- Receiver FSM
-- Virtual communication channel
-- Configurable baud rate
-- Delay simulation
-- Noise injection
-- Framing error simulation
-- Parity error simulation
-- Buffer simulation
-- Logging
-- Unit tests
-
----
-
-# 📦 Reused Components
-
-This project builds upon reusable infrastructure developed previously.
-
-Planned reusable utilities include:
-
-- VirtualChannel
-- FSM framework
-- CRC utilities (where applicable)
-- Host abstraction
-- Data conversion utilities
-
-These components may be adapted as the UART implementation evolves.
-
----
-
-# 📖 Recommended Study Order
-
-1. UART fundamentals
-2. UART frame format
-3. UART timing and baud rate
-4. UART errors
-5. Basic UART hardware registers
-
----
-
-# 📺 Learning Resources
-
-- Wikipedia — UART
-- Ben Eater (YouTube)
-- Phil's Lab (YouTube)
-- Controllerstech (YouTube)
-
----
-
-# 🚫 Out of Scope (Initial Versions)
-
-The first versions intentionally avoid advanced topics such as:
-
-- DMA
-- RS-232
-- RS-485
-- Hardware flow control
-- Linux UART drivers
-- MCU-specific UART peripherals
-
-These can be explored as future extensions once the simulator reaches maturity.
-
----
-
-# 🎯 Long-Term Vision
-
-Rather than creating a simple UART library, the objective is to build a protocol simulator capable of modeling realistic communication behavior.
-
-The architecture developed here is expected to provide experience with:
-
-- Embedded firmware concepts
-- Communication protocol design
+```text
 UART-Emulator/
 │
 ├── README.md
@@ -289,7 +124,6 @@ UART-Emulator/
 │
 ├── uart/
 │   ├── __init__.py
-│   │
 │   ├── frame/
 │   │   ├── __init__.py
 │   │   ├── frame.py
@@ -328,10 +162,116 @@ UART-Emulator/
 └── docs/
     ├── architecture.md
     └── uart_frame.md
-- Event-driven software architecture
-- Finite State Machines
-- Software validation techniques
+```
 
-The lessons learned from this project can later inform implementations of additional protocols such as SPI, I²C, TCP/IP, and storage-oriented communication protocols.
-````
+Tests mirror the implementation and verify individual components as well as end-to-end communication.
 
+---
+
+# 🚀 Development Roadmap
+
+### V0.1 — Basic UART
+
+- 8 data bits
+- Start bit
+- Stop bit
+- Single-byte transmission
+- TX/RX FSM
+- Host A → Host B
+
+### V0.2 — Multiple Bytes
+
+- String transmission
+- Segmentation and reassembly
+- End-to-end tests
+
+### V0.3 — UART Configuration
+
+- Configurable baud rate
+- Data-bit configuration
+- Stop-bit configuration
+
+### V0.4 — Error Handling
+
+- Parity generation/checking
+- Framing errors
+- Bit corruption
+
+### V0.5 — Channel Simulation
+
+- Configurable delay
+- Bit-flip injection
+- Deterministic error injection
+
+### V0.6 — Buffering
+
+- TX buffer
+- RX buffer
+- Overrun simulation
+
+### V0.7 — Full Duplex
+
+```text
+Host A TX ───────► Host B RX
+Host A RX ◄─────── Host B TX
+```
+
+---
+
+## 🧪 Validation
+
+The emulator will be validated using `pytest`.
+
+Tests will cover:
+
+- Frame generation
+- Frame parsing
+- Parity
+- TX FSM
+- RX FSM
+- Channel behavior
+- Error injection
+- End-to-end Host A → Host B communication
+
+The final objective is not merely to transmit `"Hello"` successfully, but to demonstrate how the receiver behaves when communication conditions become imperfect.
+
+---
+
+## 🚫 Initial Scope
+
+The project intentionally does not initially cover:
+
+- DMA
+- RS-232 / RS-485
+- Hardware flow control
+- Linux UART drivers
+- MCU-specific UART peripherals
+- Physical voltage-level simulation
+
+The emulator models UART behavior at the **digital protocol and timing level**, not the electrical layer.
+
+---
+
+## 🎯 Final Outcome
+
+A completed UART emulator should demonstrate:
+
+```text
+Application Data
+       ↓
+UART Framing
+       ↓
+TX FSM
+       ↓
+Timed Bit Stream
+       ↓
+Virtual Channel
+       ↓
+RX FSM
+       ↓
+Frame Validation
+       ↓
+Application Data
+```
+
+The project is intended as a practical exercise in **firmware architecture, communication protocols, finite state machines, and software-based validation**.
