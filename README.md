@@ -279,7 +279,8 @@ Rather than creating a simple UART library, the objective is to build a protocol
 The architecture developed here is expected to provide experience with:
 
 - Embedded firmware concepts
-- Communication protocol designUART-Emulator/
+- Communication protocol design
+UART-Emulator/
 │
 ├── README.md
 ├── pyproject.toml
