@@ -279,10 +279,58 @@ Rather than creating a simple UART library, the objective is to build a protocol
 The architecture developed here is expected to provide experience with:
 
 - Embedded firmware concepts
-- Communication protocol design
+- Communication protocol designUART-Emulator/
+│
+├── README.md
+├── pyproject.toml
+├── requirements.txt
+├── .gitignore
+│
+├── uart/
+│   ├── __init__.py
+│   │
+│   ├── frame/
+│   │   ├── __init__.py
+│   │   ├── frame.py
+│   │   └── parity.py
+│   │
+│   ├── fsm/
+│   │   ├── __init__.py
+│   │   ├── states.py
+│   │   ├── events.py
+│   │   ├── transmitter.py
+│   │   └── receiver.py
+│   │
+│   ├── channel/
+│   │   ├── __init__.py
+│   │   └── virtual_channel.py
+│   │
+│   ├── host/
+│   │   ├── __init__.py
+│   │   └── host.py
+│   │
+│   └── core/
+│       ├── __init__.py
+│       └── segmenter.py
+│
+├── tests/
+│   ├── test_frame.py
+│   ├── test_parity.py
+│   ├── test_transmitter.py
+│   ├── test_receiver.py
+│   ├── test_channel.py
+│   └── test_host.py
+│
+├── examples/
+│   └── basic_communication.py
+│
+└── docs/
+    ├── architecture.md
+    └── uart_frame.md
 - Event-driven software architecture
 - Finite State Machines
 - Software validation techniques
 
 The lessons learned from this project can later inform implementations of additional protocols such as SPI, I²C, TCP/IP, and storage-oriented communication protocols.
 ````
+
