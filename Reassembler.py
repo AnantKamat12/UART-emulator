@@ -17,7 +17,7 @@ class Reassembler:
         status,raw_data = DS().decode_frame(frame)
         if status!="OK":
             #send nack
-            pass
+            return None
         else:
             if self.data_type == 0:
                 data = raw_data
