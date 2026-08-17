@@ -29,4 +29,4 @@ class Reassembler:
                 data = bytes([raw_data])
 
             self.rcvd_data.append(data)
-        return data
+            return data

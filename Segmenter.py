@@ -1,5 +1,6 @@
 import struct as st
 class segmenter:
+    #segmenter must import host?
     def __init__(self, max_segment_size=8):
         self.max_segment_size = max_segment_size
     def segment_data(self, data):
