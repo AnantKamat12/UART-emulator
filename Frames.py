@@ -47,18 +47,102 @@ class Frame():
                 
         pkd_frame= self.start << 12 | self.data << 4 | parity_bit<<3 | self.stop 
         return st.pack('>H', pkd_frame) #big-endian unsigned short
+    
     def __str__(self):
         return f"Frame(start={bin(self.start)}, parity={self.parity}, data={bin(self.data)}, stop={bin(self.stop)})"
-if __name__ == "__main__":
-    sg =sg(max_segment_size=8)
-    list_of_data=sg.segment_data("Anant")
-    print((list_of_data))
-    print("while printing by bin() it omist leading zeros, of start and stop bits, start is 4 bits and stop is 3 bits, so leading zeros are omitted")
-    for segment in list_of_data:
-        frame = Frame(start=0b0101, parity=0, data=segment, stop=0b010)
-        serialized_frame = frame.serialise()
-        print(frame)
-        print(f"Serialized Frame: {serialized_frame.hex()}")
-    
+class Deserialise:
+    def __init__(self, start=0b0101, parity=0, stop=0b010):
+        self.start = start & 0xF
+        self.parity = parity & 0x01
+        self.stop = stop & 0x7
 
+    def decode_data(self, frame):
+        start = (frame >> 12) & 0xF
+        data = (frame >> 4) & 0xFF
+        parity_bit = (frame >> 3) & 0x01
+        stop = frame & 0x7
+        status="OK"
+        #FS=false start,PE=parity error,FE=framing error
+        if start != self.start:
+            status="FS"
+        count = bin(data).count("1")
+        expected_parity = count % 2 if self.parity == 0 else 1 - (count % 2)
+
+        if parity_bit != expected_parity:
+            status="PE"
+           
+
+        if stop != self.stop:
+            status="FE"
+        return status,data
+    def decode_frame(self, frame_bytes):
+        """
+        Decode a serialized frame.
+
+        Input:
+            bytes produced by Frame.serialise()
+        """
+
+        if len(frame_bytes) != 2:
+            raise ValueError("UART frame must contain exactly 2 bytes")
+
+        frame = st.unpack(">H", frame_bytes)[0]
+
+        return self.decode_data(frame)
+
+        
+# TODO:
+# Instead of raising ValueError for FS, PE and FE, update the
+# receiver FSM state/error status so that the FSM can handle
+# the error and trigger a frame re-request/retransmission.
+#
+# FS → False Start
+# PE → Parity Error
+# FE → Framing Error
+#
+# Future flow:
+# RX FSM → detect error → set error state → request retransmission
+#        → discard corrupted frame → receive retransmitted frame
+    
+if __name__ == "__main__":
+    sg = sg(max_segment_size=8)
+
+    list_of_data = sg.segment_data("Anant")
+
+    print(list_of_data)
+    print(
+        "while printing by bin() it omits leading zeros of start and stop bits; "
+        "start is 4 bits and stop is 3 bits."
+    )
+
+    deserializer = Deserialise(
+        start=0b0101,
+        parity=0,
+        stop=0b010
+    )
+
+    for segment in list_of_data:
+
+        frame = Frame(
+            start=0b0101,
+            parity=0,
+            data=segment,
+            stop=0b010
+        )
+
+        serialized_frame = frame.serialise()
+
+        print("\nOriginal Frame:")
+        print(frame)
+
+        print(f"Serialized Frame: {serialized_frame.hex()}")
+
+        try:
+            _,decoded_data = deserializer.decode_frame(serialized_frame)
+
+            print(f"Decoded Data: {decoded_data}")
+            print(f"Decoded Data (char): {chr(decoded_data)}")
+
+        except ValueError as error:
+            print(f"Frame Error: {error}")
     

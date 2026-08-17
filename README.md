@@ -85,19 +85,6 @@ UARTConfig
 └── stop_bits
 ```
 
-Components **use** the configuration rather than inheriting from it.
-
-```text
-                    UARTConfig
-                   /          \
-                  ▼            ▼
-              Host A         Host B
-              /   \          /   \
-            TX     RX       TX     RX
-             │     │        │     │
-             └─────┘        └──────┘
-```
-
 The main components are:
 
 - `UARTConfig` — UART operating parameters
@@ -111,167 +98,414 @@ The main components are:
 Composition is intentionally preferred over forcing unrelated components into an inheritance hierarchy.
 
 ---
+Yes. One important terminology point: **FS, PE, and FE are detected by the receiver**, while the Virtual Channel merely corrupts the bit stream. Also, if *any* of these errors occurs, the receiver should reject the frame and request retransmission.
 
-## 📁 Project Structure
+Here is the updated README section in the same concise style:
 
-```text
-UART-Emulator/
-│
-├── README.md
-├── pyproject.toml
-├── requirements.txt
-├── .gitignore
-│
-├── uart/
-│   ├── __init__.py
-│   ├── frame/
-│   │   ├── __init__.py
-│   │   ├── frame.py & UArtConfig.y
-│   │   └── parity.py
-│   │
-│   ├── fsm/
-│   │   ├── __init__.py
-│   │   ├── states.py
-│   │   ├── events.py
-│   │   ├── transmitter.py
-│   │   └── receiver.py
-│   │
-│   ├── channel/
-│   │   ├── __init__.py
-│   │   └── virtual_channel.py
-│   │
-│   ├── host/
-│   │   ├── __init__.py
-│   │   └── host.py
-│   │
-│   └── core/
-│       ├── __init__.py
-│       └── segmenter.py
-│
-├── tests/
-│   ├── test_frame.py
-│   ├── test_parity.py
-│   ├── test_transmitter.py
-│   ├── test_receiver.py
-│   ├── test_channel.py
-│   └── test_host.py
-│
-├── examples/
-│   └── basic_communication.py
-│
-└── docs/
-    ├── architecture.md
-    └── uart_frame.md
-```
+# UART Emulator
 
-Tests mirror the implementation and verify individual components as well as end-to-end communication.
+A Python-based emulator for asynchronous UART communication between virtual hosts without physical UART hardware.
 
----
-
-# 🚀 Development Roadmap
-
-### V0.1 — Basic UART
-
-- 8 data bits
-- Start bit
-- Stop bit
-- Single-byte transmission
-- TX/RX FSM
-- Host A → Host B
-
-### V0.2 — Multiple Bytes
-
-- String transmission
-- Segmentation and reassembly
-- End-to-end tests
-
-### V0.3 — UART Configuration
-
-- Configurable baud rate
-- Data-bit configuration
-- Stop-bit configuration
-
-### V0.4 — Error Handling
-
-- Parity generation/checking
-- Framing errors
-- Bit corruption
-
-### V0.5 — Channel Simulation
-
-- Configurable delay
-- Bit-flip injection
-- Deterministic error injection
-
-### V0.6 — Buffering
-
-- TX buffer
-- RX buffer
-- Overrun simulation
-
-### V0.7 — Full Duplex
+## Architecture
 
 ```text
-Host A TX ───────► Host B RX
-Host A RX ◄─────── Host B TX
-```
-
----
-
-## 🧪 Validation
-
-The emulator will be validated using `pytest`.
-
-Tests will cover:
-
-- Frame generation
-- Frame parsing
-- Parity
-- TX FSM
-- RX FSM
-- Channel behavior
-- Error injection
-- End-to-end Host A → Host B communication
-
-The final objective is not merely to transmit `"Hello"` successfully, but to demonstrate how the receiver behaves when communication conditions become imperfect.
-
----
-
-## 🚫 Initial Scope
-
-The project intentionally does not initially cover:
-
-- DMA
-- RS-232 / RS-485
-- Hardware flow control
-- Linux UART drivers
-- MCU-specific UART peripherals
-- Physical voltage-level simulation
-
-The emulator models UART behavior at the **digital protocol and timing level**, not the electrical layer.
-
----
-
-## 🎯 Final Outcome
-
-A completed UART emulator should demonstrate:
-
-```text
-Application Data
-       ↓
-UART Framing
-       ↓
-TX FSM
-       ↓
-Timed Bit Stream
-       ↓
+Host A
+  │
+  ▼
+ TX
+  │
+  ▼
+UART Frame
+  │
+  ▼
 Virtual Channel
-       ↓
-RX FSM
-       ↓
+  │
+  ▼
+ RX
+  │
+  ▼
 Frame Validation
-       ↓
-Application Data
+  │
+  ├── Valid ───────► Host B
+  │
+  └── Error ───────► Re-request Frame
 ```
 
-The project is intended as a practical exercise in **firmware architecture, communication protocols, finite state machines, and software-based validation**.
+The current implementation focuses on **Host A → Host B** communication. Full-duplex communication will be added later.
+
+## UART Frame
+
+The emulator currently uses:
+
+```text
+START | DATA | PARITY | STOP
+```
+
+Current frame format:
+
+```text
+START  = 0101
+DATA   = 8 bits
+PARITY = 1 bit
+STOP   = 010
+```
+
+Therefore:
+
+```text
+4 + 8 + 1 + 3 = 16 bits
+```
+
+Frame example:
+
+```text
+0101 | XXXXXXXX | P | 010
+```
+
+The parity bit is placed immediately after the data bits and before the stop sequence.
+
+## Components
+
+### Host
+
+Represents a UART endpoint.
+
+```text
+Host
+├── baud_rate
+├── is_ideal
+├── host_type
+├── TX
+└── RX
+```
+
+`host_type`:
+
+```text
+0 → TX only
+1 → RX only
+2 → TX + RX
+```
+
+### TX
+
+Responsible for:
+
+* Generating the UART frame
+* Serializing the frame
+* Transmitting bits sequentially
+* Applying baud-rate timing
+
+### RX
+
+Responsible for:
+
+* Detecting the start sequence
+* Receiving data bits
+* Checking parity
+* Validating the stop sequence
+* Detecting frame errors
+* Requesting retransmission when an error occurs
+* Reconstructing the transmitted byte
+
+### UART Config
+
+```text
+baud_rate
+data_bits
+parity
+stop_bits
+```
+
+Configuration is composed into UART components rather than inherited.
+
+## Virtual Channel
+
+The Virtual Channel represents the communication medium.
+
+```text
+TX
+ │
+ ▼
+Virtual Channel
+ │
+ ├── Delay
+ ├── Bit Flip
+ ├── Noise
+ └── Bit Loss (future)
+ │
+ ▼
+RX
+```
+
+The channel operates only on the **digital bit stream**.
+
+It does not understand:
+
+* UART frames
+* Start/stop bits
+* Parity
+* Application data
+* UART errors
+
+## Error Detection
+
+The receiver currently detects three types of frame errors.
+
+### 1. False Start — FS
+
+The expected start sequence is:
+
+```text
+0101
+```
+
+If the received start sequence is corrupted, the receiver detects a **False Start (FS)**.
+
+```text
+Expected:
+0101
+
+Received:
+0111
+
+→ FS
+```
+
+The frame is rejected and a retransmission is requested.
+
+### 2. Parity Error — PE
+
+A **Parity Error (PE)** occurs if either:
+
+* A data bit is corrupted
+* The parity bit itself is corrupted
+
+The receiver recalculates parity from the received data and compares it with the received parity bit.
+
+```text
+DATA + PARITY
+     │
+     ▼
+Parity Check
+     │
+     ├── Match ──► Continue
+     │
+     └── Mismatch ► PE
+```
+
+On `PE`, the frame is rejected and a retransmission is requested.
+
+### 3. Framing Error — FE
+
+The expected stop sequence is:
+
+```text
+010
+```
+
+If the last three stop bits are corrupted, the receiver detects a **Framing Error (FE)**.
+
+```text
+Expected STOP:
+010
+
+Received STOP:
+111
+
+→ FE
+```
+
+On `FE`, the frame is rejected and a retransmission is requested.
+
+## Error Handling
+
+All detected frame errors follow the same recovery mechanism:
+
+```text
+                Received Frame
+                       │
+                       ▼
+                 Frame Validation
+                       │
+          ┌────────────┴────────────┐
+          │                         │
+        Valid                     Error
+          │                         │
+          ▼                         ▼
+       Accept                 Reject Frame
+          │                         │
+          ▼                         ▼
+      Host B Data             Re-request
+                                    │
+                                    ▼
+                              Retransmission
+```
+
+The receiver must **not deliver corrupted data to the application**.
+
+Error types:
+
+```text
+FS → False Start
+PE → Parity Error
+FE → Framing Error
+```
+
+Any of these errors causes:
+
+```text
+Reject → Re-request → Retransmit
+```
+
+## Error Injection
+
+The Virtual Channel can intentionally corrupt individual bits.
+
+Possible faults:
+
+```text
+Bit Flip
+Bit Loss
+Delay
+Noise
+```
+
+Example:
+
+```text
+Original:
+
+0101 | 10110010 | 1 | 010
+
+             ↓
+          Bit Flip
+
+0101 | 10100010 | 1 | 010
+             │
+             ▼
+             PE
+```
+
+A corrupted start sequence produces:
+
+```text
+FS
+```
+
+A corrupted data/parity region produces:
+
+```text
+PE
+```
+
+A corrupted stop sequence produces:
+
+```text
+FE
+```
+
+Errors should be configurable and reproducible using a deterministic random seed.
+
+## Retransmission
+
+When `FS`, `PE`, or `FE` is detected, the receiver requests the transmitter to resend the frame.
+
+```text
+TX
+ │
+ ▼
+Frame
+ │
+ ▼
+Channel
+ │
+ ▼
+RX
+ │
+ ├── Valid ───────► Accept
+ │
+ └── FS/PE/FE
+          │
+          ▼
+      Re-request
+          │
+          ▼
+      Retransmit
+```
+
+The corrupted frame must be discarded before retransmission.
+
+## Current Goal
+
+The first milestone is:
+
+```text
+Host A
+  ↓
+TX
+  ↓
+START + DATA + PARITY + STOP
+  ↓
+Virtual Channel
+  ↓
+RX
+  ↓
+Frame Validation
+  ↓
+Host B
+```
+
+With error handling:
+
+```text
+Corruption
+    ↓
+FS / PE / FE
+    ↓
+Frame Rejected
+    ↓
+Re-request
+    ↓
+Retransmission
+    ↓
+Successful Reception
+```
+
+## Development Versions
+
+```text
+v0.1
+- Host → TX → Channel → RX → Host
+- Ideal channel
+- Correct frame transmission
+
+v0.2
+- Start-bit corruption
+- False Start (FS)
+- Parity Error (PE)
+- Framing Error (FE)
+- Frame rejection
+- Retransmission request
+
+v0.3
+- Channel delay
+- Bit loss
+- More realistic timing
+
+v0.4
+- Message segmentation/reassembly
+
+v0.5
+- Full-duplex communication
+```
+
+## Design Principles
+
+* **Separation of concerns** — Host, UART and Channel remain independent.
+* **Protocol-independent channel** — the channel operates on raw bits.
+* **Receiver validates frames** — corrupted frames never reach the application.
+* **Explicit error types** — FS, PE and FE identify the failure location.
+* **Automatic recovery** — detected errors trigger frame retransmission.
+* **Deterministic testing** — injected errors should be reproducible.
+* **Incremental development** — introduce complexity only after the basic communication path works.

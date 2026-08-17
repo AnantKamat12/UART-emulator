@@ -1,665 +1,411 @@
-# UART Emulator Architecture
+Yes. One important terminology point: **FS, PE, and FE are detected by the receiver**, while the Virtual Channel merely corrupts the bit stream. Also, if *any* of these errors occurs, the receiver should reject the frame and request retransmission.
 
-## 1. System Overview
+Here is the updated README section in the same concise style:
 
-The UART Emulator models asynchronous serial communication between two virtual hosts without requiring physical UART hardware.
+# UART Emulator
 
-The system separates:
+A Python-based emulator for asynchronous UART communication between virtual hosts without physical UART hardware.
 
-1. Application behavior
-2. UART protocol behavior
-3. Timing
-4. Channel behavior
-5. Error injection
-6. Verification
-
-The primary communication path is:
+## Architecture
 
 ```text
 Host A
-   │
-   ▼
-Segmenter
-   │
-   ▼
-UART Frame Generator
-   │
-   ▼
-UART Transmitter FSM
-   │
-   ▼
+  │
+  ▼
+ TX
+  │
+  ▼
+UART Frame
+  │
+  ▼
 Virtual Channel
-   │
-   ▼
-UART Receiver FSM
-   │
-   ▼
-UART Frame Parser
-   │
-   ▼
-Reassembler
-   │
-   ▼
-Host B
+  │
+  ▼
+ RX
+  │
+  ▼
+Frame Validation
+  │
+  ├── Valid ───────► Host B
+  │
+  └── Error ───────► Re-request Frame
 ```
 
----
+The current implementation focuses on **Host A → Host B** communication. Full-duplex communication will be added later.
 
-## 2. High-Level Architecture
+## UART Frame
+
+The emulator currently uses:
 
 ```text
-                         UART EMULATOR
-
-        HOST A                                      HOST B
-   ┌──────────────┐                           ┌──────────────┐
-   │ Application  │                           │ Application  │
-   └──────┬───────┘                           └──────▲───────┘
-          │                                          │
-          ▼                                          │
-   ┌──────────────┐                           ┌──────────────┐
-   │  Segmenter   │                           │  Reassembler │
-   └──────┬───────┘                           └──────▲───────┘
-          │                                          │
-          ▼                                          │
-   ┌──────────────┐                           ┌──────────────┐
-   │ UART Frame   │                           │ UART Frame   │
-   │  Generator   │                           │    Parser    │
-   └──────┬───────┘                           └──────▲───────┘
-          │                                          │
-          ▼                                          │
-   ┌──────────────┐                           ┌──────────────┐
-   │ UART TX FSM  │                           │ UART RX FSM  │
-   └──────┬───────┘                           └──────▲───────┘
-          │                                          │
-          │       Timed Digital Bit Stream           │
-          │                                          │
-          └──────────────┐            ┌──────────────┘
-                         ▼            │
-                 ┌────────────────────────┐
-                 │    Virtual Channel     │
-                 │                        │
-                 │  • Delay               │
-                 │  • Bit Flip            │
-                 │  • Noise               │
-                 │  • Bit Loss (future)   │
-                 └────────────────────────┘
+START | DATA | PARITY | STOP
 ```
 
----
-
-## 3. Configuration
-
-`UARTConfig` contains the parameters that define UART operation.
+Current frame format:
 
 ```text
-UARTConfig
-├── baud_rate
-├── data_bits
-├── parity
-└── stop_bits
+START  = 0101
+DATA   = 8 bits
+PARITY = 1 bit
+STOP   = 010
 ```
 
-Example:
+Therefore:
 
 ```text
-UARTConfig
-baud_rate = 9600
-data_bits = 8
-parity = NONE
-stop_bits = 1
+4 + 8 + 1 + 3 = 16 bits
 ```
 
-### Composition
-
-Components use `UARTConfig` rather than inheriting from it.
+Frame example:
 
 ```text
-                    UARTConfig
-                   /          \
-                  ▼            ▼
-              Host A         Host B
-              /   \          /   \
-            TX     RX       TX     RX
+0101 | XXXXXXXX | P | 010
 ```
 
-This keeps configuration separate from component behavior.
+The parity bit is placed immediately after the data bits and before the stop sequence.
 
----
+## Components
 
-## 4. Host
+### Host
 
-A `Host` represents an endpoint in the UART communication system.
-
-Conceptually:
+Represents a UART endpoint.
 
 ```text
 Host
-├── Application Data
-├── UARTConfig
-├── UARTTransmitter
-└── UARTReceiver
+├── baud_rate
+├── is_ideal
+├── host_type
+├── TX
+└── RX
 ```
 
-Host A and Host B are independent endpoints.
-
-For the initial half-duplex implementation:
+`host_type`:
 
 ```text
-Host A ───────────────► Host B
+0 → TX only
+1 → RX only
+2 → TX + RX
 ```
 
-Full-duplex communication can later be modeled as:
+### TX
+
+Responsible for:
+
+* Generating the UART frame
+* Serializing the frame
+* Transmitting bits sequentially
+* Applying baud-rate timing
+
+### RX
+
+Responsible for:
+
+* Detecting the start sequence
+* Receiving data bits
+* Checking parity
+* Validating the stop sequence
+* Detecting frame errors
+* Requesting retransmission when an error occurs
+* Reconstructing the transmitted byte
+
+### UART Config
 
 ```text
-Host A TX ───────────► Host B RX
-
-Host A RX ◄─────────── Host B TX
+baud_rate
+data_bits
+parity
+stop_bits
 ```
 
----
+Configuration is composed into UART components rather than inherited.
 
-## 5. UART Frame
+## Virtual Channel
 
-The frame generator converts an application byte into a UART frame.
-
-For 8N1:
-
-```text
-START | D0 | D1 | D2 | D3 | D4 | D5 | D6 | D7 | STOP
-```
-
-The frame generator does not control transmission timing.
-
-Its responsibility is to construct the logical frame.
-
-```text
-Byte
- │
- ▼
-UARTFrame
- │
- ▼
-START + DATA + PARITY + STOP
-```
-
----
-
-## 6. Transmitter
-
-The transmitter is responsible for serializing the UART frame.
-
-The TX FSM initially contains:
-
-```text
-IDLE
-  ↓
-START_BIT
-  ↓
-DATA_BITS
-  ↓
-PARITY_BIT
-  ↓
-STOP_BIT
-  ↓
-IDLE
-```
-
-For configurations without parity:
-
-```text
-IDLE
-  ↓
-START_BIT
-  ↓
-DATA_BITS
-  ↓
-STOP_BIT
-  ↓
-IDLE
-```
-
-The transmitter uses `UARTConfig.baud_rate` to determine the time between transmitted bits.
-
----
-
-## 7. Receiver
-
-The receiver reconstructs UART frames from the incoming bit stream.
-
-The RX FSM initially contains:
-
-```text
-IDLE
-  ↓
-START_DETECTED
-  ↓
-DATA_BITS
-  ↓
-PARITY_CHECK
-  ↓
-STOP_BIT
-  ↓
-BYTE_RECEIVED
-  ↓
-IDLE
-```
-
-For configurations without parity:
-
-```text
-IDLE
-  ↓
-START_DETECTED
-  ↓
-DATA_BITS
-  ↓
-STOP_BIT
-  ↓
-BYTE_RECEIVED
-  ↓
-IDLE
-```
-
-The receiver uses its configured baud rate to determine sampling timing.
-
----
-
-## 8. Virtual Channel
-
-The Virtual Channel represents the communication medium between the UART transmitter and receiver.
-
-It does not understand UART frame semantics.
-
-It operates on the transmitted digital signal.
+The Virtual Channel represents the communication medium.
 
 ```text
 TX
  │
- │ 0 / 1
  ▼
 Virtual Channel
  │
  ├── Delay
  ├── Bit Flip
- └── Noise
+ ├── Noise
+ └── Bit Loss (future)
  │
  ▼
 RX
 ```
 
-### Responsibilities
+The channel operates only on the **digital bit stream**.
 
-The channel may:
+It does not understand:
 
-- Delay bits
-- Flip bits
-- Inject noise
-- Drop bits in future versions
+* UART frames
+* Start/stop bits
+* Parity
+* Application data
+* UART errors
 
-### Non-responsibilities
+## Error Detection
 
-The channel does not:
+The receiver currently detects three types of frame errors.
 
-- Generate UART frames
-- Calculate parity
-- Interpret start/stop bits
-- Run UART FSM logic
-- Determine baud rate
+### 1. False Start — FS
 
-This separation keeps the communication medium independent from the protocol.
-
----
-
-## 9. Baud Rate and Timing
-
-Baud rate belongs to the UART configuration rather than the Virtual Channel.
+The expected start sequence is:
 
 ```text
-UARTConfig
-     │
-     ├── baud_rate
+0101
+```
+
+If the received start sequence is corrupted, the receiver detects a **False Start (FS)**.
+
+```text
+Expected:
+0101
+
+Received:
+0111
+
+→ FS
+```
+
+The frame is rejected and a retransmission is requested.
+
+### 2. Parity Error — PE
+
+A **Parity Error (PE)** occurs if either:
+
+* A data bit is corrupted
+* The parity bit itself is corrupted
+
+The receiver recalculates parity from the received data and compares it with the received parity bit.
+
+```text
+DATA + PARITY
      │
      ▼
-TX timing              RX sampling timing
+Parity Check
+     │
+     ├── Match ──► Continue
+     │
+     └── Mismatch ► PE
 ```
 
-The relationship is:
+On `PE`, the frame is rejected and a retransmission is requested.
+
+### 3. Framing Error — FE
+
+The expected stop sequence is:
 
 ```text
-Bit Period = 1 / Baud Rate
+010
 ```
 
-Example:
+If the last three stop bits are corrupted, the receiver detects a **Framing Error (FE)**.
 
 ```text
-9600 baud
-≈ 104.17 µs / bit
+Expected STOP:
+010
+
+Received STOP:
+111
+
+→ FE
 ```
 
-The simulator may initially use logical simulation ticks instead of real wall-clock time.
+On `FE`, the frame is rejected and a retransmission is requested.
 
-Example:
+## Error Handling
+
+All detected frame errors follow the same recovery mechanism:
 
 ```text
-Tick 0 → Start Bit
-Tick 1 → Data Bit 0
-Tick 2 → Data Bit 1
-...
+                Received Frame
+                       │
+                       ▼
+                 Frame Validation
+                       │
+          ┌────────────┴────────────┐
+          │                         │
+        Valid                     Error
+          │                         │
+          ▼                         ▼
+       Accept                 Reject Frame
+          │                         │
+          ▼                         ▼
+      Host B Data             Re-request
+                                    │
+                                    ▼
+                              Retransmission
 ```
 
-A higher-resolution simulation clock can later be introduced for realistic baud-rate relationships.
+The receiver must **not deliver corrupted data to the application**.
 
----
+Error types:
 
-## 10. Error Injection
+```text
+FS → False Start
+PE → Parity Error
+FE → Framing Error
+```
 
-The Virtual Channel provides controlled fault injection.
+Any of these errors causes:
+
+```text
+Reject → Re-request → Retransmit
+```
+
+## Error Injection
+
+The Virtual Channel can intentionally corrupt individual bits.
+
+Possible faults:
+
+```text
+Bit Flip
+Bit Loss
+Delay
+Noise
+```
 
 Example:
 
 ```text
 Original:
 
-1 0 1 1 0 0 1
+0101 | 10110010 | 1 | 010
 
-        ↓
+             ↓
+          Bit Flip
 
-Channel bit flip
-
-        ↓
-
-1 0 0 1 0 0 1
+0101 | 10100010 | 1 | 010
+             │
+             ▼
+             PE
 ```
 
-The receiver should detect the resulting protocol error where applicable.
-
-The objective is to make errors:
-
-- Configurable
-- Reproducible
-- Testable
-
-A deterministic random seed may be used during tests.
-
----
-
-## 11. Data Flow
-
-For an application message:
+A corrupted start sequence produces:
 
 ```text
-"Hello"
+FS
 ```
 
-the flow is:
+A corrupted data/parity region produces:
 
 ```text
-Application
-     │
-     ▼
-UTF-8 Bytes
-     │
-     ▼
-Segmenter
-     │
-     ▼
-Individual Bytes
-     │
-     ▼
-UART Frame Generator
-     │
-     ▼
-Start + Data + Parity + Stop
-     │
-     ▼
-TX FSM
-     │
-     ▼
-Timed Bit Stream
-     │
-     ▼
-Virtual Channel
-     │
-     ▼
-RX FSM
-     │
-     ▼
-UART Frame Parser
-     │
-     ▼
-Bytes
-     │
-     ▼
-Reassembler
-     │
-     ▼
-"Hello"
+PE
 ```
 
----
-
-## 12. Component Relationships
+A corrupted stop sequence produces:
 
 ```text
-                   UARTConfig
-                       │
-          ┌────────────┼────────────┐
-          ▼            ▼            ▼
-       Host A       UARTFrame    Host B
-        /  \                       /  \
-       ▼    ▼                     ▼    ▼
-      TX    RX                   TX    RX
-       │    │                     │    │
-       └────┼────── Channel ──────┼────┘
-            │                     │
-            ▼                     ▼
-         A → B                  B → A
+FE
 ```
 
-The first implementation only requires:
+Errors should be configurable and reproducible using a deterministic random seed.
+
+## Retransmission
+
+When `FS`, `PE`, or `FE` is detected, the receiver requests the transmitter to resend the frame.
 
 ```text
-Host A → Host B
-```
-
-The reverse direction will be added when full-duplex support is implemented.
-
----
-
-## 13. Project Structure
-
-```text
-UART-Emulator/
-│
-├── README.md
-│
-├── uart/
-│   ├── __init__.py
-│   │
-│   ├── frame/
-│   │   ├── __init__.py
-│   │   ├── frame.py
-│   │   └── parity.py
-│   │
-│   ├── fsm/
-│   │   ├── __init__.py
-│   │   ├── states.py
-│   │   ├── events.py
-│   │   ├── transmitter.py
-│   │   └── receiver.py
-│   │
-│   ├── channel/
-│   │   ├── __init__.py
-│   │   └── virtual_channel.py
-│   │
-│   ├── host/
-│   │   ├── __init__.py
-│   │   └── host.py
-│   │
-│   └── core/
-│       ├── __init__.py
-│       └── segmenter.py
-│
-├── tests/
-│   ├── test_frame.py
-│   ├── test_parity.py
-│   ├── test_transmitter.py
-│   ├── test_receiver.py
-│   ├── test_channel.py
-│   └── test_host.py
-│
-├── examples/
-│   └── basic_communication.py
-│
-└── docs/
-    ├── architecture.md
-    └── uart_frame.md
-```
-
----
-
-## 14. Design Principles
-
-### Separation of Concerns
-
-Each component should have one primary responsibility.
-
-```text
-Frame       → Frame representation
-TX FSM      → Transmission behavior
-RX FSM      → Reception behavior
-Channel     → Communication medium
-Config      → UART parameters
-Host        → Endpoint behavior
-```
-
-### Composition Over Unnecessary Inheritance
-
-`UARTConfig` is a configuration object.
-
-Components use it:
-
-```text
-Host ────────► UARTConfig
-Frame ───────► UARTConfig
-TX ──────────► UARTConfig
-RX ──────────► UARTConfig
-```
-
-They do not inherit from it.
-
-### Protocol-Specific Design
-
-The emulator is intentionally designed around UART rather than attempting to create one abstraction covering fundamentally different protocols such as UART, I²C, SPI, TCP, and UFS.
-
-Future protocols should be implemented independently first. Shared abstractions should only be extracted after multiple concrete implementations reveal genuine common behavior.
-
----
-
-## 15. Development Strategy
-
-Implementation will proceed incrementally.
-
-### V0.1 — Basic UART
-
-```text
-Host A
-  ↓
-UART Frame
-  ↓
-TX FSM
-  ↓
-Virtual Channel
-  ↓
-RX FSM
-  ↓
-Host B
-```
-
-Transmit one byte successfully.
-
-### V0.2 — Multiple Bytes
-
-Transmit strings and implement segmentation/reassembly.
-
-### V0.3 — UART Configuration
-
-Introduce configurable:
-
-- Baud rate
-- Data bits
-- Parity
-- Stop bits
-
-### V0.4 — Error Handling
-
-Introduce:
-
-- Parity checking
-- Framing errors
-- Bit corruption
-
-### V0.5 — Channel Simulation
-
-Introduce:
-
-- Configurable delay
-- Bit-flip injection
-- Deterministic error injection
-
-### V0.6 — Buffering
-
-Introduce:
-
-- TX buffer
-- RX buffer
-- Overrun behavior
-
-### V0.7 — Full Duplex
-
-```text
-Host A TX ───────► Host B RX
-Host A RX ◄─────── Host B TX
-```
-
----
-
-## 16. Verification Strategy
-
-Each component should have unit tests.
-
-```text
-tests/
-├── test_frame.py
-├── test_parity.py
-├── test_transmitter.py
-├── test_receiver.py
-├── test_channel.py
-└── test_host.py
-```
-
-Integration testing should verify:
-
-```text
-Host A
-   ↓
-UART TX
-   ↓
+TX
+ │
+ ▼
+Frame
+ │
+ ▼
 Channel
-   ↓
-UART RX
-   ↓
+ │
+ ▼
+RX
+ │
+ ├── Valid ───────► Accept
+ │
+ └── FS/PE/FE
+          │
+          ▼
+      Re-request
+          │
+          ▼
+      Retransmit
+```
+
+The corrupted frame must be discarded before retransmission.
+
+## Current Goal
+
+The first milestone is:
+
+```text
+Host A
+  ↓
+TX
+  ↓
+START + DATA + PARITY + STOP
+  ↓
+Virtual Channel
+  ↓
+RX
+  ↓
+Frame Validation
+  ↓
 Host B
 ```
 
-Both normal operation and injected faults should be tested.
-
-The final end-to-end test should verify:
+With error handling:
 
 ```text
-Original Application Data
-          ==
-Received Application Data
+Corruption
+    ↓
+FS / PE / FE
+    ↓
+Frame Rejected
+    ↓
+Re-request
+    ↓
+Retransmission
+    ↓
+Successful Reception
 ```
 
-when the communication channel is operating normally, while corrupted communication produces the expected UART error behavior.
+## Development Versions
+
+```text
+v0.1
+- Host → TX → Channel → RX → Host
+- Ideal channel
+- Correct frame transmission
+
+v0.2
+- Start-bit corruption
+- False Start (FS)
+- Parity Error (PE)
+- Framing Error (FE)
+- Frame rejection
+- Retransmission request
+
+v0.3
+- Channel delay
+- Bit loss
+- More realistic timing
+
+v0.4
+- Message segmentation/reassembly
+
+v0.5
+- Full-duplex communication
+```
+
+## Design Principles
+
+* **Separation of concerns** — Host, UART and Channel remain independent.
+* **Protocol-independent channel** — the channel operates on raw bits.
+* **Receiver validates frames** — corrupted frames never reach the application.
+* **Explicit error types** — FS, PE and FE identify the failure location.
+* **Automatic recovery** — detected errors trigger frame retransmission.
+* **Deterministic testing** — injected errors should be reproducible.
+* **Incremental development** — introduce complexity only after the basic communication path works.
