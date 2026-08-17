@@ -107,7 +107,7 @@ class Deserialise:
 if __name__ == "__main__":
     sg = sg(max_segment_size=8)
 
-    list_of_data = sg.segment_data("Anant")
+    list_of_data = sg.segment_data("ANANT")
 
     print(list_of_data)
     print(
