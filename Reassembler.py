@@ -16,7 +16,7 @@ class Reassembler:
     def decode(self, frame):
         status,raw_data = DS().decode_frame(frame)
         if status!="OK":
-            #send nack
+            #frame will be not decoded at all,data lost,so return None
             return None
         else:
             if self.data_type == 0:
