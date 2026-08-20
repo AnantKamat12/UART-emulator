@@ -6,4 +6,6 @@ class UARTConnection():
         self.hostA.setuphost()  
         self.hostB.setuphost()
         self.hostA.clk.reset()#clk is singleton..
-        #self.hostB.clk.reset()#clk is singleton..
+        self.hostA.clk.startclock()#start clock for hostA
+        #but if i startt cock cpu will be blocked
+        
