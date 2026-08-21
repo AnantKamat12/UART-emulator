@@ -1,153 +1,129 @@
-# UART-Emulator
+# UART Emulator
 
-A Python-based UART protocol emulator designed to model asynchronous serial communication without requiring physical hardware.
+A Python-based emulator for asynchronous UART communication between virtual hosts without requiring physical UART hardware.
 
-The project focuses on understanding UART from the bit level upward: frame generation, serialization, timing, finite state machines, error injection, and verification.
+The project models UART communication from the application-data level down to individual transmitted bits, including frame construction, serialization, simulated timing, transmission through a virtual channel, reception, frame validation, and data reconstruction.
 
-**Started:** 09/08/2026  
-**Target completion:** 21/08/2026(completed version 1, made todo for version 2)
-
----
-
-## 🎯 Project Goals
-
-- Model UART communication between two virtual hosts.
-- Implement UART framing from first principles.
-- Simulate TX and RX behavior using finite state machines.
-- Model baud-rate-dependent timing.
-- Simulate communication-channel delay and bit corruption.
-- Build deterministic tests for normal and erroneous communication.
+**Started:** 09/08/2026
+**Version 1 completed:** 21/08/2026
+**Current version:** Version 2 — In Progress
 
 ---
 
-## 📚 Learning Objectives
+## Project Status
 
-- UART asynchronous communication
-- Start, data, parity, and stop bits
-- Bit serialization and deserialization
-- Baud rate and timing
-- TX/RX finite state machines
-- Parity and framing errors
-- Buffer behavior
-- Protocol-oriented software architecture
-- Firmware validation concepts
+### Version 1 — Completed
+
+Version 1 established a working end-to-end UART simulation.
+
+The implemented communication path is:
+
+```text
+Application Data
+      │
+      ▼
+  Segmenter
+      │
+      ▼
+    Frame
+      │
+      ▼
+Serialization
+      │
+      ▼
+     TX
+      │
+      ▼
+Virtual Channel
+      │
+      ▼
+     RX
+      │
+      ▼
+Deserialization
+      │
+      ▼
+ Reassembler
+      │
+      ▼
+Application Data
+```
+
+The current implementation successfully demonstrates transmission of application data between two virtual hosts using a shared simulation clock.
+
+### Version 2 — In Progress
+
+Version 2 focuses on making the existing implementation cleaner and usable through a command-line interface.
+
+The planned work is:
+
+1. Reorganize the project into proper packages/modules.
+2. Add centralized logging.
+3. Build the CLI.
+4. Validate the complete system after each stage.
+
+The detailed Version 2 work is tracked in [`Todo.md`](Todo.md).
 
 ---
 
-# 🏗 Architecture
+# Architecture
+
+The current implementation consists of two virtual hosts connected through a singleton virtual channel.
 
 ```text
                          UART EMULATOR
 
-        HOST A                                      HOST B
-   ┌──────────────┐                           ┌──────────────┐
-   │ Application  │                           │ Application  │
-   └──────┬───────┘                           └──────▲───────┘
-          │                                          │
-          ▼                                          │
-   ┌──────────────┐                           ┌──────────────┐
-   │  Segmenter   │                           │  Reassembler │
-   └──────┬───────┘                           └──────▲───────┘
-          │                                          │
-          ▼                                          │
-   ┌──────────────┐                           ┌──────────────┐
-   │ UART Frame   │                           │ UART Receiver│
-   │  Generator   │                           │     FSM      │
-   └──────┬───────┘                           └──────▲───────┘
-          │                                          │
-          ▼                                          │
-   ┌──────────────┐                           ┌──────────────┐
-   │ UART TX FSM  │                           │ UART RX FSM  │
-   └──────┬───────┘                           └──────▲───────┘
-          │                                          │
-          └──────────────┐            ┌──────────────┘
-                         ▼            │
-                 ┌────────────────────────┐
-                 │    Virtual Channel     │
-                 │                        │
-                 │  • Delay               │
-                 │  • Bit Flip            │
-                 │  • Noise (future)      │
-                 └────────────────────────┘
+              HOST A                         HOST B
+          ┌─────────────┐                ┌─────────────┐
+          │ Application │                │ Application │
+          └──────┬──────┘                └──────▲──────┘
+                 │                              │
+                 ▼                              │
+            Segmenter                      Reassembler
+                 │                              ▲
+                 ▼                              │
+              Frame                            │
+                 │                              │
+                 ▼                              │
+           Serialization                       │
+                 │                              │
+                 ▼                              │
+                TX                              RX
+                 │                              ▲
+                 └──────────┐        ┌─────────┘
+                            ▼        │
+                      Virtual Channel
 ```
+
+The simulation is driven by a shared `Clock`.
+
+```text
+                 Shared Clock
+                      │
+          ┌───────────┴───────────┐
+          ▼                       ▼
+         TX                       RX
+          │                       ▲
+          └── Virtual Channel ────┘
+```
+
+The clock is advanced by the simulation/test code. TX and RX only perform their work for the current simulation tick; neither component advances time independently.
 
 ---
 
-## ⚙️ Configuration and Composition
+# UART Frame
 
-`UARTConfig` defines the UART operating parameters:
-
-```text
-UARTConfig
-├── baud_rate
-├── data_bits
-├── parity
-└── stop_bits
-```
-
-The main components are:
-
-- `UARTConfig` — UART operating parameters
-- `UARTFrame` — represents a UART frame
-- `Segmenter` — converts application data into bytes
-- `UARTTransmitter` — TX state machine and serialization
-- `UARTReceiver` — RX state machine and deserialization
-- `VirtualChannel` — models transmission delay and corruption
-- `Host` — represents a UART communication endpoint
-
-Composition is intentionally preferred over forcing unrelated components into an inheritance hierarchy.
-
----
-Yes. One important terminology point: **FS, PE, and FE are detected by the receiver**, while the Virtual Channel merely corrupts the bit stream. Also, if *any* of these errors occurs, the receiver should reject the frame and request retransmission.
-
-Here is the updated README section in the same concise style:
-
-# UART Emulator
-
-A Python-based emulator for asynchronous UART communication between virtual hosts without physical UART hardware.
-
-## Architecture
-
-```text
-Host A
-  │
-  ▼
- TX
-  │
-  ▼
-UART Frame
-  │
-  ▼
-Virtual Channel
-  │
-  ▼
- RX
-  │
-  ▼
-Frame Validation
-  │
-  ├── Valid ───────► Host B
-  │
-  └── Error ───────► Re-request Frame
-```
-
-The current implementation focuses on **Host A → Host B** communication. Full-duplex communication will be added later.
-
-## UART Frame
-
-The emulator currently uses:
+The current frame format is a fixed 16-bit frame:
 
 ```text
 START | DATA | PARITY | STOP
 ```
 
-Current frame format:
-
 ```text
-START  = 0101
+START  = 4 bits
 DATA   = 8 bits
 PARITY = 1 bit
-STOP   = 010
+STOP   = 3 bits
 ```
 
 Therefore:
@@ -156,30 +132,235 @@ Therefore:
 4 + 8 + 1 + 3 = 16 bits
 ```
 
-Frame example:
+The default frame is:
 
 ```text
 0101 | XXXXXXXX | P | 010
 ```
 
-The parity bit is placed immediately after the data bits and before the stop sequence.
+where:
 
-## Components
+* `0101` is the start sequence.
+* `XXXXXXXX` is the 8-bit data field.
+* `P` is the calculated parity bit.
+* `010` is the stop sequence.
 
-### Host
+The serialized frame is represented as **2 bytes in big-endian order**.
 
-Represents a UART endpoint.
+---
+
+# Implemented Components
+
+## `Frames.py`
+
+Contains the `Frame` and `Deserialise` classes.
+
+### `Frame`
+
+Responsible for:
+
+* Accepting integer, string, byte, or byte-array input.
+* Converting the input into an 8-bit data value.
+* Calculating the parity bit.
+* Constructing the 16-bit UART frame.
+* Serializing the frame into two bytes.
+
+### `Deserialise`
+
+Responsible for:
+
+* Converting the two serialized bytes back into a 16-bit frame.
+* Extracting start, data, parity, and stop fields.
+* Validating the frame.
+* Reporting frame status.
+
+Possible validation results are:
 
 ```text
-Host
-├── baud_rate
-├── is_ideal
-├── host_type
-├── TX
-└── RX
+OK
+FS
+PE
+FE
 ```
 
-`host_type`:
+where:
+
+```text
+FS = False Start
+PE = Parity Error
+FE = Framing Error
+```
+
+---
+
+## `Segmenter.py`
+
+Converts application data into segments.
+
+The current segment size is expressed in bits.
+
+For the current configuration:
+
+```text
+max_segment_size = 8 bits
+```
+
+which results in one data byte per segment.
+
+For example:
+
+```text
+"ANANT"
+```
+
+becomes approximately:
+
+```text
+[b'A', b'N', b'A', b'N', b'T']
+```
+
+The segmenter therefore allows the end-to-end test to transmit a larger application message one UART frame at a time.
+
+---
+
+## `Reassembler.py`
+
+Receives decoded frame data and reconstructs the application-level data.
+
+For string data, individual received byte values are converted back into characters and stored in:
+
+```text
+rcvd_data
+```
+
+For example:
+
+```text
+A
+N
+A
+N
+T
+```
+
+can be accumulated into:
+
+```text
+ANANT
+```
+
+---
+
+## `Transmitter.py`
+
+The `Tx` class performs timed bit transmission.
+
+A frame is scheduled using:
+
+```text
+start_tick
+```
+
+At each simulation tick, TX checks whether a bit should be transmitted.
+
+The current implementation uses:
+
+```text
+100 simulation ticks = 1 UART bit at 9600 baud
+```
+
+Bits are transmitted **LSB first**.
+
+TX does not advance the simulation clock.
+
+---
+
+## `Receiver.py`
+
+The `Rx` class checks the Virtual Channel at each simulation tick.
+
+When a bit is available:
+
+1. The bit is read from the selected channel line.
+2. The bit is inserted into the received frame.
+3. The bit counter is incremented.
+4. After 16 bits, the complete frame is returned.
+
+RX does not advance the simulation clock.
+
+Frame validation is performed subsequently through `Deserialise`.
+
+---
+
+## `VirtualChannel.py`
+
+The Virtual Channel provides the simulated communication medium.
+
+It currently maintains two independent communication lines:
+
+```text
+line 0
+line 1
+```
+
+Each transmitted bit is stored together with its simulation tick:
+
+```text
+(tick, bit)
+```
+
+The receiver can retrieve a bit once its scheduled tick has been reached.
+
+The channel therefore provides the basic timing/transport abstraction between TX and RX.
+
+### Current scope
+
+The current Virtual Channel does **not** yet implement:
+
+* Bit flipping
+* Packet/bit loss
+* Noise
+* Random corruption
+* Configurable propagation delay
+
+These are outside the current Version 2 TODO and are not documented as implemented features.
+
+---
+
+## `Timing.py`
+
+Contains the singleton `Clock`.
+
+The clock provides:
+
+```text
+current simulation tick
+tick()
+curr_tick()
+reset()
+```
+
+The clock is shared by the hosts so that TX and RX operate against the same simulation time.
+
+The simulation follows:
+
+```text
+current tick
+     │
+     ├── Host A step
+     ├── Host B step
+     │
+     ▼
+clock.tick()
+```
+
+---
+
+## `Host.py`
+
+`Host` represents a UART endpoint.
+
+A host can be configured as:
 
 ```text
 0 → TX only
@@ -187,325 +368,242 @@ Host
 2 → TX + RX
 ```
 
-### TX
-
-Responsible for:
-
-* Generating the UART frame
-* Serializing the frame
-* Transmitting bits sequentially
-* Applying baud-rate timing
-
-### RX
-
-Responsible for:
-
-* Detecting the start sequence
-* Receiving data bits
-* Checking parity
-* Validating the stop sequence
-* Detecting frame errors
-* Requesting retransmission when an error occurs
-* Reconstructing the transmitted byte
-
-### UART Config
+For a full host:
 
 ```text
-baud_rate
-data_bits
-parity
-stop_bits
+Host
+├── TX
+├── RX
+├── Clock
+├── Receive Reassembler
+└── Send Reassembler
 ```
 
-Configuration is composed into UART components rather than inherited.
-
-## Virtual Channel
-
-The Virtual Channel represents the communication medium.
+Host A and Host B use opposite channel lines:
 
 ```text
-TX
- │
- ▼
-Virtual Channel
- │
- ├── Delay
- ├── Bit Flip
- ├── Noise
- └── Bit Loss (future)
- │
- ▼
-RX
+Host A TX → line 0
+Host A RX ← line 1
+
+Host B TX → line 1
+Host B RX ← line 0
 ```
 
-The channel operates only on the **digital bit stream**.
+---
 
-It does not understand:
+## `UARTConnection.py`
 
-* UART frames
-* Start/stop bits
-* Parity
-* Application data
-* UART errors
+Provides a higher-level connection containing two hosts.
 
-## Error Detection
-
-The receiver currently detects three types of frame errors.
-
-### 1. False Start — FS
-
-The expected start sequence is:
-
-```text
-0101
-```
-
-If the received start sequence is corrupted, the receiver detects a **False Start (FS)**.
-
-```text
-Expected:
-0101
-
-Received:
-0111
-
-→ FS
-```
-
-The frame is rejected and a retransmission is requested.
-
-### 2. Parity Error — PE
-
-A **Parity Error (PE)** occurs if either:
-
-* A data bit is corrupted
-* The parity bit itself is corrupted
-
-The receiver recalculates parity from the received data and compares it with the received parity bit.
-
-```text
-DATA + PARITY
-     │
-     ▼
-Parity Check
-     │
-     ├── Match ──► Continue
-     │
-     └── Mismatch ► PE
-```
-
-On `PE`, the frame is rejected and a retransmission is requested.
-
-### 3. Framing Error — FE
-
-The expected stop sequence is:
-
-```text
-010
-```
-
-If the last three stop bits are corrupted, the receiver detects a **Framing Error (FE)**.
-
-```text
-Expected STOP:
-010
-
-Received STOP:
-111
-
-→ FE
-```
-
-On `FE`, the frame is rejected and a retransmission is requested.
-
-## Error Handling
-
-All detected frame errors follow the same recovery mechanism:
-
-```text
-                Received Frame
-                       │
-                       ▼
-                 Frame Validation
-                       │
-          ┌────────────┴────────────┐
-          │                         │
-        Valid                     Error
-          │                         │
-          ▼                         ▼
-       Accept                 Reject Frame
-          │                         │
-          ▼                         ▼
-      Host B Data             Re-request
-                                    │
-                                    ▼
-                              Retransmission
-```
-
-The receiver must **not deliver corrupted data to the application**.
-
-Error types:
-
-```text
-FS → False Start
-PE → Parity Error
-FE → Framing Error
-```
-
-Any of these errors causes:
-
-```text
-Reject → Re-request → Retransmit
-```
-
-## Error Injection
-
-The Virtual Channel can intentionally corrupt individual bits.
-
-Possible faults:
-
-```text
-Bit Flip
-Bit Loss
-Delay
-Noise
-```
-
-Example:
-
-```text
-Original:
-
-0101 | 10110010 | 1 | 010
-
-             ↓
-          Bit Flip
-
-0101 | 10100010 | 1 | 010
-             │
-             ▼
-             PE
-```
-
-A corrupted start sequence produces:
-
-```text
-FS
-```
-
-A corrupted data/parity region produces:
-
-```text
-PE
-```
-
-A corrupted stop sequence produces:
-
-```text
-FE
-```
-
-Errors should be configurable and reproducible using a deterministic random seed.
-
-## Retransmission
-
-When `FS`, `PE`, or `FE` is detected, the receiver requests the transmitter to resend the frame.
-
-```text
-TX
- │
- ▼
-Frame
- │
- ▼
-Channel
- │
- ▼
-RX
- │
- ├── Valid ───────► Accept
- │
- └── FS/PE/FE
-          │
-          ▼
-      Re-request
-          │
-          ▼
-      Retransmit
-```
-
-The corrupted frame must be discarded before retransmission.
-
-## Current Goal
-
-The first milestone is:
+It creates:
 
 ```text
 Host A
-  ↓
-TX
-  ↓
-START + DATA + PARITY + STOP
-  ↓
-Virtual Channel
-  ↓
-RX
-  ↓
-Frame Validation
-  ↓
 Host B
+Shared Clock
 ```
 
-With error handling:
+and can run the simulation tick by tick.
+
+The detailed end-to-end transmission test currently exists in `test_uart.py`.
+
+---
+
+# Version 1 End-to-End Test
+
+The current test demonstrates the complete data path.
 
 ```text
-Corruption
-    ↓
-FS / PE / FE
-    ↓
-Frame Rejected
-    ↓
-Re-request
-    ↓
-Retransmission
-    ↓
-Successful Reception
+"ANANT has created this"
+          │
+          ▼
+      Segmenter
+          │
+          ▼
+   Individual bytes
+          │
+          ▼
+        Frame
+          │
+          ▼
+     Serialize
+          │
+          ▼
+      Host A TX
+          │
+          ▼
+   Virtual Channel
+          │
+          ▼
+      Host B RX
+          │
+          ▼
+     Deserialize
+          │
+          ▼
+     Reassembler
+          │
+          ▼
+"ANANT has created this"
 ```
 
-## Development Versions
+The test also verifies that the reconstructed application data matches the original message.
+
+---
+
+# Version 2 — TODO
+
+Version 2 is intentionally limited to improving the existing implementation rather than expanding the protocol scope.
+
+## 1. Project Restructuring
+
+Move the currently scattered Python files into logical packages/modules.
+
+Goals:
 
 ```text
-v0.1
-- Host → TX → Channel → RX → Host
-- Ideal channel
-- Correct frame transmission
-
-v0.2
-- Start-bit corruption
-- False Start (FS)
-- Parity Error (PE)
-- Framing Error (FE)
-- Frame rejection
-- Retransmission request
-
-v0.3
-- Channel delay
-- Bit loss
-- More realistic timing
-
-v0.4
-- Message segmentation/reassembly
-
-v0.5
-- Full-duplex communication
+Logical project structure
+        │
+        ├── UART components
+        ├── Simulation components
+        ├── Core/protocol components
+        └── Tests
 ```
 
-## Design Principles
+Imports must be corrected after relocation.
 
-* **Separation of concerns** — Host, UART and Channel remain independent.
-* **Protocol-independent channel** — the channel operates on raw bits.
-* **Receiver validates frames** — corrupted frames never reach the application.
-* **Explicit error types** — FS, PE and FE identify the failure location.
-* **Automatic recovery** — detected errors trigger frame retransmission.
-* **Deterministic testing** — injected errors should be reproducible.
-* **Incremental development** — introduce complexity only after the basic communication path works.
+The existing protocol behavior should remain unchanged.
+
+---
+
+## 2. Centralized Logging
+
+Replace scattered `print()` statements with a Logger module.
+
+The simulation should produce:
+
+```text
+host_a.log
+host_b.log
+simulation.log
+```
+
+Logs should contain information such as:
+
+```text
+[tick=100] [HOST_A] TX bit=0
+[tick=100] [HOST_B] RX bit=0
+```
+
+The combined simulation log should make it possible to reconstruct the interaction between the hosts.
+
+Diagnostic logging should remain separate from user-facing CLI output.
+
+---
+
+## 3. Command-Line Interface
+
+The CLI will allow the user to:
+
+* Select Host A or Host B as the transmitting host.
+* Select the data type.
+* Enter the data.
+* Validate the input.
+* Trim data if it exceeds the current frame capacity.
+* Transmit exactly **one frame per CLI transmission**.
+
+The CLI path will be:
+
+```text
+User Input
+    │
+    ▼
+Frame
+    │
+    ▼
+Serialization
+    │
+    ▼
+TX
+    │
+    ▼
+Virtual Channel
+    │
+    ▼
+RX
+    │
+    ▼
+Deserialization
+    │
+    ▼
+Reassembler
+    │
+    ▼
+Result
+```
+
+Multi-packet segmentation through the CLI is **not part of Version 2**.
+
+---
+
+# Version 2 Validation
+
+Each stage will be validated independently.
+
+### After restructuring
+
+Run the existing end-to-end test and verify that protocol behavior remains unchanged.
+
+### After logging
+
+Verify:
+
+```text
+host_a.log
+host_b.log
+simulation.log
+```
+
+and confirm that the communication can be reconstructed from the logs.
+
+### After CLI
+
+Perform a complete user-driven transmission and verify:
+
+```text
+Transmitted data
+Received data
+Success / Failure
+```
+
+---
+
+# Project Direction
+
+The project is being developed incrementally.
+
+```text
+Version 1
+   │
+   ├── Frame
+   ├── Serialization
+   ├── Timing
+   ├── TX
+   ├── Virtual Channel
+   ├── RX
+   ├── Deserialization
+   ├── Segmentation
+   └── Reassembly
+          │
+          ▼
+Version 2
+   │
+   ├── Project restructuring
+   ├── Logging
+   ├── CLI
+   └── Validation
+```
+
+The immediate objective is **not** to add more protocol features.
+
+The objective is to turn the existing working simulation into a clean, organized, testable, CLI-driven UART emulator.

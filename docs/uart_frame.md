@@ -1,47 +1,17 @@
-Yes. One important terminology point: **FS, PE, and FE are detected by the receiver**, while the Virtual Channel merely corrupts the bit stream. Also, if *any* of these errors occurs, the receiver should reject the frame and request retransmission.
+# UART Frame
 
-Here is the updated README section in the same concise style:
+The UART Emulator currently models a fixed 16-bit UART-like frame.
 
-# UART Emulator
-
-A Python-based emulator for asynchronous UART communication between virtual hosts without physical UART hardware.
-
-## Architecture
+## Frame Format
 
 ```text
-Host A
-  │
-  ▼
- TX
-  │
-  ▼
-UART Frame
-  │
-  ▼
-Virtual Channel
-  │
-  ▼
- RX
-  │
-  ▼
-Frame Validation
-  │
-  ├── Valid ───────► Host B
-  │
-  └── Error ───────► Re-request Frame
+┌────────┬──────────┬────────┬────────┐
+│ START  │   DATA   │ PARITY │  STOP  │
+│ 4 bit  │  8 bits  │ 1 bit  │ 3 bits │
+└────────┴──────────┴────────┴────────┘
 ```
 
-The current implementation focuses on **Host A → Host B** communication. Full-duplex communication will be added later.
-
-## UART Frame
-
-The emulator currently uses:
-
-```text
-START | DATA | PARITY | STOP
-```
-
-Current frame format:
+The default values are:
 
 ```text
 START  = 0101
@@ -50,362 +20,346 @@ PARITY = 1 bit
 STOP   = 010
 ```
 
-Therefore:
+Total:
 
 ```text
 4 + 8 + 1 + 3 = 16 bits
 ```
 
-Frame example:
+Example:
 
 ```text
-0101 | XXXXXXXX | P | 010
+0101 | 01000001 | 0 | 010
 ```
 
-The parity bit is placed immediately after the data bits and before the stop sequence.
+The data field above represents the character `A`.
 
-## Components
+---
 
-### Host
+## Frame Construction
 
-Represents a UART endpoint.
+`Frames.py` contains the `Frame` class.
+
+A frame can be constructed from:
+
+* `int`
+* `str`
+* `bytes`
+* `bytearray`
+
+The input is converted to an 8-bit data value.
+
+```python
+frame = Frame(
+    start=0b0101,
+    parity=0,
+    data=b"A",
+    stop=0b010
+)
+```
+
+The current implementation masks the resulting data value to 8 bits.
+
+---
+
+## Parity
+
+The emulator supports:
 
 ```text
-Host
-├── baud_rate
-├── is_ideal
-├── host_type
-├── TX
-└── RX
+parity = 0 → even parity
+parity = 1 → odd parity
 ```
 
-`host_type`:
+The parity bit is calculated during serialization.
+
+For even parity:
 
 ```text
-0 → TX only
-1 → RX only
-2 → TX + RX
+Number of 1s in DATA + PARITY
+must be even
 ```
 
-### TX
-
-Responsible for:
-
-* Generating the UART frame
-* Serializing the frame
-* Transmitting bits sequentially
-* Applying baud-rate timing
-
-### RX
-
-Responsible for:
-
-* Detecting the start sequence
-* Receiving data bits
-* Checking parity
-* Validating the stop sequence
-* Detecting frame errors
-* Requesting retransmission when an error occurs
-* Reconstructing the transmitted byte
-
-### UART Config
+For odd parity:
 
 ```text
-baud_rate
-data_bits
-parity
-stop_bits
+Number of 1s in DATA + PARITY
+must be odd
 ```
 
-Configuration is composed into UART components rather than inherited.
-
-## Virtual Channel
-
-The Virtual Channel represents the communication medium.
+The final frame is assembled as:
 
 ```text
-TX
- │
- ▼
-Virtual Channel
- │
- ├── Delay
- ├── Bit Flip
- ├── Noise
- └── Bit Loss (future)
- │
- ▼
-RX
+START | DATA | PARITY | STOP
 ```
 
-The channel operates only on the **digital bit stream**.
+---
 
-It does not understand:
+## Serialization
 
-* UART frames
-* Start/stop bits
-* Parity
-* Application data
-* UART errors
+The complete frame is represented internally as a 16-bit integer.
 
-## Error Detection
+It is serialized using:
 
-The receiver currently detects three types of frame errors.
+```python
+struct.pack(">H", value)
+```
 
-### 1. False Start — FS
-
-The expected start sequence is:
+`>` means:
 
 ```text
-0101
+Big-endian
 ```
 
-If the received start sequence is corrupted, the receiver detects a **False Start (FS)**.
+`H` means:
+
+```text
+Unsigned short = 16 bits
+```
+
+Therefore the result is exactly:
+
+```text
+2 bytes
+```
+
+For example:
+
+```python
+serialized_frame = frame.serialise()
+```
+
+The resulting bytes can then be converted to an integer for the current TX implementation.
+
+---
+
+## Transmission
+
+The current TX implementation transmits the serialized frame as a 16-bit integer.
+
+The bits are extracted using:
+
+```python
+bit = (frame >> bit_index) & 1
+```
+
+with:
+
+```text
+bit_index = 0 ... 15
+```
+
+Therefore transmission occurs:
+
+```text
+LSB first
+```
+
+The TX schedules one bit at each configured bit boundary.
+
+At the current default configuration:
+
+```text
+9600 baud
+100 simulation ticks / bit
+```
+
+A complete 16-bit frame therefore requires approximately:
+
+```text
+16 × 100 = 1600 simulation ticks
+```
+
+of bit transmission time.
+
+---
+
+# Deserialization
+
+`Deserialise` converts the two serialized bytes back into a 16-bit integer.
+
+```python
+frame = struct.unpack(">H", frame_bytes)[0]
+```
+
+The fields are then extracted using bit operations:
+
+```text
+START  = bits 12–15
+DATA   = bits 4–11
+PARITY = bit 3
+STOP   = bits 0–2
+```
+
+The receiver validates the extracted fields.
+
+---
+
+# Frame Validation
+
+The deserializer returns a status together with the decoded data.
+
+Possible statuses:
+
+```text
+OK
+FS
+PE
+FE
+```
+
+## FS — False Start
+
+The received start field does not match the expected start sequence.
 
 ```text
 Expected:
 0101
 
 Received:
-0111
+different value
 
 → FS
 ```
 
-The frame is rejected and a retransmission is requested.
+---
 
-### 2. Parity Error — PE
+## PE — Parity Error
 
-A **Parity Error (PE)** occurs if either:
+The received parity bit does not match the parity calculated from the received data.
 
-* A data bit is corrupted
-* The parity bit itself is corrupted
+This can occur when:
 
-The receiver recalculates parity from the received data and compares it with the received parity bit.
+* A data bit is changed.
+* The parity bit is changed.
 
-```text
-DATA + PARITY
-     │
-     ▼
-Parity Check
-     │
-     ├── Match ──► Continue
-     │
-     └── Mismatch ► PE
-```
-
-On `PE`, the frame is rejected and a retransmission is requested.
-
-### 3. Framing Error — FE
-
-The expected stop sequence is:
-
-```text
-010
-```
-
-If the last three stop bits are corrupted, the receiver detects a **Framing Error (FE)**.
-
-```text
-Expected STOP:
-010
-
-Received STOP:
-111
-
-→ FE
-```
-
-On `FE`, the frame is rejected and a retransmission is requested.
-
-## Error Handling
-
-All detected frame errors follow the same recovery mechanism:
-
-```text
-                Received Frame
-                       │
-                       ▼
-                 Frame Validation
-                       │
-          ┌────────────┴────────────┐
-          │                         │
-        Valid                     Error
-          │                         │
-          ▼                         ▼
-       Accept                 Reject Frame
-          │                         │
-          ▼                         ▼
-      Host B Data             Re-request
-                                    │
-                                    ▼
-                              Retransmission
-```
-
-The receiver must **not deliver corrupted data to the application**.
-
-Error types:
-
-```text
-FS → False Start
-PE → Parity Error
-FE → Framing Error
-```
-
-Any of these errors causes:
-
-```text
-Reject → Re-request → Retransmit
-```
-
-## Error Injection
-
-The Virtual Channel can intentionally corrupt individual bits.
-
-Possible faults:
-
-```text
-Bit Flip
-Bit Loss
-Delay
-Noise
-```
-
-Example:
-
-```text
-Original:
-
-0101 | 10110010 | 1 | 010
-
-             ↓
-          Bit Flip
-
-0101 | 10100010 | 1 | 010
-             │
-             ▼
-             PE
-```
-
-A corrupted start sequence produces:
-
-```text
-FS
-```
-
-A corrupted data/parity region produces:
+The deserializer reports:
 
 ```text
 PE
 ```
 
-A corrupted stop sequence produces:
+---
+
+## FE — Framing Error
+
+The received stop field does not match the expected stop sequence.
 
 ```text
+Expected:
+010
+
+Received:
+different value
+
+→ FE
+```
+
+---
+
+# Current Error Handling Boundary
+
+An important architectural distinction is that **frame validation and frame recovery are separate responsibilities**.
+
+`Deserialise` currently detects:
+
+```text
+FS
+PE
 FE
 ```
 
-Errors should be configurable and reproducible using a deterministic random seed.
+but the current implementation does **not yet implement the retransmission protocol**.
 
-## Retransmission
-
-When `FS`, `PE`, or `FE` is detected, the receiver requests the transmitter to resend the frame.
+The existing code therefore performs:
 
 ```text
-TX
+RX
  │
  ▼
+Deserialise
+ │
+ ├── OK ──► decoded data
+ │
+ └── FS/PE/FE ──► error status
+```
+
+Retransmission handling is not part of the current Version 1 implementation.
+
+---
+
+# Application Data Flow
+
+For the current end-to-end test, application data first passes through the `Segmenter`.
+
+For example:
+
+```text
+"ANANT"
+```
+
+is divided into 8-bit segments:
+
+```text
+A
+N
+A
+N
+T
+```
+
+Each segment is then placed into a separate 16-bit UART frame.
+
+At the receiving side:
+
+```text
 Frame
- │
- ▼
-Channel
- │
- ▼
-RX
- │
- ├── Valid ───────► Accept
- │
- └── FS/PE/FE
-          │
-          ▼
-      Re-request
-          │
-          ▼
-      Retransmit
+  │
+  ▼
+Deserialise
+  │
+  ▼
+Data byte
+  │
+  ▼
+Reassembler
+  │
+  ▼
+"ANANT"
 ```
 
-The corrupted frame must be discarded before retransmission.
+This allows the current implementation to demonstrate both frame-level transmission and application-level reconstruction.
 
-## Current Goal
+---
 
-The first milestone is:
+# Current Scope
 
-```text
-Host A
-  ↓
-TX
-  ↓
-START + DATA + PARITY + STOP
-  ↓
-Virtual Channel
-  ↓
-RX
-  ↓
-Frame Validation
-  ↓
-Host B
-```
+Implemented:
 
-With error handling:
+* Fixed 16-bit frame.
+* 4-bit start field.
+* 8-bit data field.
+* 1-bit parity field.
+* 3-bit stop field.
+* Even/odd parity calculation.
+* Serialization using Python `struct`.
+* Deserialization.
+* FS detection.
+* PE detection.
+* FE detection.
+* Bit-by-bit TX.
+* Bit-by-bit RX.
+* Simulation-clock timing.
+* Application-data segmentation.
+* Application-data reassembly.
 
-```text
-Corruption
-    ↓
-FS / PE / FE
-    ↓
-Frame Rejected
-    ↓
-Re-request
-    ↓
-Retransmission
-    ↓
-Successful Reception
-```
+Not currently implemented:
 
-## Development Versions
+* Automatic retransmission.
+* Error injection.
+* Random bit corruption.
+* Bit loss.
+* Channel noise.
+* Configurable channel delay.
 
-```text
-v0.1
-- Host → TX → Channel → RX → Host
-- Ideal channel
-- Correct frame transmission
-
-v0.2
-- Start-bit corruption
-- False Start (FS)
-- Parity Error (PE)
-- Framing Error (FE)
-- Frame rejection
-- Retransmission request
-
-v0.3
-- Channel delay
-- Bit loss
-- More realistic timing
-
-v0.4
-- Message segmentation/reassembly
-
-v0.5
-- Full-duplex communication
-```
-
-## Design Principles
-
-* **Separation of concerns** — Host, UART and Channel remain independent.
-* **Protocol-independent channel** — the channel operates on raw bits.
-* **Receiver validates frames** — corrupted frames never reach the application.
-* **Explicit error types** — FS, PE and FE identify the failure location.
-* **Automatic recovery** — detected errors trigger frame retransmission.
-* **Deterministic testing** — injected errors should be reproducible.
-* **Incremental development** — introduce complexity only after the basic communication path works.
+These should not be treated as current UART Emulator capabilities.
