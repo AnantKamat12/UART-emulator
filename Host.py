@@ -85,7 +85,7 @@ class Host:
                 print(
                     f"Host received complete frame "
                     f"at tick {current_tick}: {frame:016b}"
-                )
+                )#return farme when complete
 
                 # Later we can pass this into your reassembler
                 # self.rck_reassembler.decode(frame)

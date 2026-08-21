@@ -37,7 +37,7 @@ class Rx:
         bit = self.vc.read(
             tick=current_tick,
             line=line
-        )
+        ) 
 
         # Nothing available at this tick
         if bit is None:
