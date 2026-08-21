@@ -5,7 +5,7 @@ A Python-based UART protocol emulator designed to model asynchronous serial comm
 The project focuses on understanding UART from the bit level upward: frame generation, serialization, timing, finite state machines, error injection, and verification.
 
 **Started:** 09/08/2026  
-**Target completion:** 21/08/2026
+**Target completion:** 21/08/2026(completed version 1, made todo for version 2)
 
 ---
 
