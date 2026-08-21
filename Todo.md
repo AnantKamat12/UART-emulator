@@ -1,4 +1,5 @@
 # UART Emulator — TODO
+-Version 2
 
 - [ ] Reorganize project into proper folders/packages
   - Move currently scattered `.py` files into logical modules.
