@@ -10,7 +10,7 @@ from Reassembler import Reassembler
 
 BAUD_RATE = 9600
 MAX_SEGMENT_SIZE = 8
-TEST_MESSAGE = "ANANT has created this"
+TEST_MESSAGE = "An"
 
 
 # ============================================================
@@ -80,7 +80,7 @@ print(f"Number segments  : {len(segments)}")
 # TRANSMIT EACH SEGMENT
 # ============================================================
 
-START_TICK = 100
+START_TICK = 1
 
 for segment_index, segment in enumerate(segments):
 
@@ -133,8 +133,7 @@ for segment_index, segment in enumerate(segments):
     # --------------------------------------------------------
 
     current_start_tick = START_TICK + (
-        segment_index * 1800
-    )
+        segment_index * 1700    )
 
     print("\n[TRANSMISSION SETUP]")
     print(f"Start tick : {current_start_tick}")

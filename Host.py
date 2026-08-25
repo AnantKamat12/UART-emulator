@@ -17,17 +17,15 @@ class Host:
         self.host_type = host_type
         self.data_type = data_type
 
-        # Host A transmits on line 0 and receives on line 1
-        # Host B transmits on line 1 and receives on line 0
+        # Host A transmits on line 0 and receives on line 1.
+        # Host B transmits on line 1 and receives on line 0.
         self.host_transmit_lane = host_transmit_lane
         self.host_receive_lane = 1 - host_transmit_lane
 
         self.rck_reassembler = RA(data_type)
         self.send_reassembler = RA(data_type)
 
-        # Host owns/accesses the simulation clock
         self.clk = CLK(self.baud_rate)
-
         self.tx = None
         self.rx = None
 
@@ -45,12 +43,7 @@ class Host:
             self.rx = Rx(self.baud_rate)
 
     def start_send(self, frame, start_tick):
-        """
-        Start a transmission.
-
-        This only tells TX what to transmit.
-        It does NOT advance the clock.
-        """
+        """Queue a frame for transmission at the requested start tick."""
         if self.tx is None:
             raise RuntimeError("TX is not initialized.")
 
@@ -61,20 +54,12 @@ class Host:
         )
 
     def step(self):
-        """
-        Execute one simulation step.
-
-        TX and RX both operate at the SAME current tick.
-        This method does NOT advance the clock.
-        """
-
+        """Advance one simulation tick and let TX/RX operate at that tick."""
         current_tick = self.clk.curr_tick()
 
-        # TX gets to act at this tick
         if self.tx is not None:
             self.tx.step(current_tick)
 
-        # RX gets to act at this tick
         if self.rx is not None:
             frame = self.rx.step(
                 current_tick,
@@ -85,7 +70,7 @@ class Host:
                 print(
                     f"Host received complete frame "
                     f"at tick {current_tick}: {frame:016b}"
-                )#return farme when complete
+                )
 
                 # Later we can pass this into your reassembler
                 # self.rck_reassembler.decode(frame)
