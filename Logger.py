@@ -41,9 +41,9 @@ class logger:
         self.filename = (
             f"{self.hostname}_{self.log_id}.log"
         )
-        os.makedirs("logs", exist_ok=True)
+        os.makedirs("UARTlogs", exist_ok=True)
         self.file = open(
-            f"logs/{self.filename}",
+            f"UARTlogs/{self.filename}",
             "w",
             encoding="utf-8"
         )
