@@ -45,7 +45,7 @@
     - Deserialization
     - Reassembler
   - Print the transmitted data, received data, and final success/failure status.
-
+- [IMP]Make configurable number of data bits in a frame, on multiple of 8,16,24
 - [ ] Validate the project after each stage
   - After restructuring: run the current end-to-end test.
   - After logger implementation: verify all three log files.
