@@ -30,6 +30,8 @@ class Reassembler:
 
             self.rcvd_data.append(data)
             return data
+    def rcvd_data_comb(self):
+        return ''.join(self.rcvd_data)
     
 if __name__ == "__main__":
     sg = sg(max_segment_size=8)

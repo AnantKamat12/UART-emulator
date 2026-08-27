@@ -80,8 +80,8 @@ print(f"Number segments  : {len(segments)}")
 # TRANSMIT EACH SEGMENT
 # ============================================================
 
-START_TICK = 1
-
+START_TICK = 98
+rcvd=[]
 for segment_index, segment in enumerate(segments):
 
     print("\n")
@@ -140,7 +140,7 @@ for segment_index, segment in enumerate(segments):
     print(f"TX lane    : {hostA.host_transmit_lane}")
     print(f"RX lane    : {hostB.host_receive_lane}")
 
-    hostA.tx.start_transmission(
+    hostA.start_send(
         frame=frame_int,
         start_tick=current_start_tick,
         line=hostA.host_transmit_lane
@@ -212,6 +212,7 @@ for segment_index, segment in enumerate(segments):
                 f"Received bytes   : "
                 f"{received_bytes.hex()}"
             )
+            rcvd.append(received_bytes)
 
             # ------------------------------------------------
             # REASSEMBLER
@@ -254,7 +255,7 @@ for segment_index, segment in enumerate(segments):
         # ADVANCE SINGLE SIMULATION CLOCK
         # ----------------------------------------------------
 
-        clock.tick()
+        clock.tick()#test moves the clock
 
 
 # ============================================================
@@ -269,10 +270,10 @@ print("=" * 70)
 print(
     f"Original message : {TEST_MESSAGE}"
 )
-
+data=receiver_reassembler.rcvd_data_comb()
 print(
-    f"Received data    : "
-    f"{''.join(receiver_reassembler.rcvd_data)}"
+    f"Received data    : {data}"
+   
 )
 
 print(
@@ -281,7 +282,6 @@ print(
 
 print(
     f"SUCCESS          : "
-    f"{''.join(receiver_reassembler.rcvd_data) == TEST_MESSAGE}"
+    f"{data == TEST_MESSAGE}"
 )
 
-print("=" * 70)

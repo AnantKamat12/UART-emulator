@@ -42,15 +42,17 @@ class Host:
         if self.host_type in [1, 2]:
             self.rx = Rx(self.baud_rate)
 
-    def start_send(self, frame, start_tick):
+    def start_send(self, frame, start_tick,line):
         """Queue a frame for transmission at the requested start tick."""
+        if line is None:
+            line=self.host_transmit_lane
         if self.tx is None:
             raise RuntimeError("TX is not initialized.")
 
         self.tx.start_transmission(
             frame=frame,
             start_tick=start_tick,
-            line=self.host_transmit_lane
+            line=line
         )
 
     def step(self):
