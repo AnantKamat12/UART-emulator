@@ -3,7 +3,7 @@
 # ============================================================
 
 import enum
-
+import os
 
 # ============================================================
 # HOST TYPE
@@ -41,9 +41,9 @@ class logger:
         self.filename = (
             f"{self.hostname}_{self.log_id}.log"
         )
-
+        os.makedirs("logs", exist_ok=True)
         self.file = open(
-            self.filename,
+            f"logs/{self.filename}",
             "w",
             encoding="utf-8"
         )
