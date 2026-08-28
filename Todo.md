@@ -4,11 +4,11 @@
 
 ### 1. Reorganize project into proper folders/packages
 
-- [ ] Move currently scattered `.py` files into logical modules.
-- [ ] Keep protocol/core, simulation, UART, tests, etc. separated.
-- [ ] Fix all imports after relocation.
-- [ ] Run the existing end-to-end test after restructuring.
-- [ ] Do not change protocol behavior during this step.
+- [x] Move currently scattered `.py` files into logical modules.
+- [x] Keep protocol/core, simulation, UART, tests, etc. separated.
+- [x] Fix all imports after relocation.
+- [x] Run the existing end-to-end test after restructuring.
+- [x] Do not change protocol behavior during this step.
 
 ### 2. Create a proper Logger module
 
