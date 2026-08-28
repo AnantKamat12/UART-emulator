@@ -1,5 +1,5 @@
-from uart_emulator.simulation.uart.Receiver import Rx
-from uart_emulator.simulation.uart.Transmitter import Tx
+from uart_emulator.uart.Receiver import Rx
+from uart_emulator.uart.Transmitter import Tx
 from uart_emulator.protocol.Reassembler import Reassembler as RA
 from uart_emulator.simulation.Timing import Clock as CLK
 

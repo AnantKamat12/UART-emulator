@@ -3,7 +3,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from uart_emulator.simulation.uart.Host import Host
+from uart_emulator.uart.Host import Host
 from uart_emulator.protocol.Segmenter import segmenter
 from uart_emulator.protocol.Frames import Frame
 from uart_emulator.protocol.Reassembler import Reassembler

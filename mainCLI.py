@@ -1,6 +1,6 @@
 import argparse
 
-from uart_emulator.simulation.uart.Host import Host
+from uart_emulator.uart.Host import Host
 from uart_emulator.protocol.Segmenter import segmenter
 from uart_emulator.protocol.Frames import Frame
 from uart_emulator.protocol.Reassembler import Reassembler
