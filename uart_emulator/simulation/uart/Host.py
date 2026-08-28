@@ -1,7 +1,7 @@
-from Receiver import Rx
-from Transmitter import Tx
-from Reassembler import Reassembler as RA
-from Timing import Clock as CLK
+from uart_emulator.simulation.uart.Receiver import Rx
+from uart_emulator.simulation.uart.Transmitter import Tx
+from uart_emulator.protocol.Reassembler import Reassembler as RA
+from uart_emulator.simulation.Timing import Clock as CLK
 
 
 class Host:

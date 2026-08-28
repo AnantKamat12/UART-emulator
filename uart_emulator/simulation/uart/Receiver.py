@@ -1,4 +1,4 @@
-from VirtualChannel import VirtualChannel as VC
+from uart_emulator.simulation.VirtualChannel import VirtualChannel as VC
 
 
 class Rx:

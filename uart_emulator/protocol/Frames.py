@@ -1,5 +1,5 @@
 import struct as st
-from Segmenter import segmenter as sg
+from uart_emulator.protocol.Segmenter import segmenter as sg
 class Frame():
     #8bit data frame with parity bit and start bit
     #parity = 0(even) or 1(odd)

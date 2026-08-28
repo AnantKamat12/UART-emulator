@@ -1,4 +1,4 @@
-from Host import Host
+from uart_emulator.simulation.uart.Host import Host
 
 
 class UARTConnection:

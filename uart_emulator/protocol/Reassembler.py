@@ -1,5 +1,5 @@
-from Frames import Deserialise as DS,Frame
-from Segmenter import segmenter as sg
+from uart_emulator.protocol.Frames import Deserialise as DS,Frame
+from uart_emulator.protocol.Segmenter import segmenter as sg
 class Reassembler:
     def __init__(self, data_type: int = 1):
         # data_type:
