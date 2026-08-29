@@ -122,3 +122,4 @@ Target architecture:
           │                │                │
       Terminal          Browser         Automated
        Input             Input           Testing
+```
