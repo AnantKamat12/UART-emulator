@@ -24,7 +24,7 @@
   - `[tick=100] [HOST_B] RX bit=0`
 - [x] The combined log should allow the complete interaction between both hosts to be reconstructed.
 - [x] Keep diagnostic logs separate from user-facing CLI output.
-- [x] Verify all three log files after implementation.
+- [x] Verify all three log files after implementation.--done by 29th Aug
 
 ### 3. Build the CLI
 
@@ -80,6 +80,7 @@
 - [ ] After configurable frame width → test 8/16/24-bit frames.
 - [ ] After CLI implementation → verify complete user-driven transmission.
 - [ ] Ensure existing TX → VC → RX timing behavior remains unchanged.
+- [] AT last beautify class names, and file names, object names to a standard
 
 ---
 
