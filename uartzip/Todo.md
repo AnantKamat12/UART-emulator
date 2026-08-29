@@ -12,19 +12,19 @@
 
 ### 2. Create a proper Logger module
 
-- [x] Replace scattered `print()` statements with centralized logging.
-- [x] Create separate log files for each host:
+- [ ] Replace scattered `print()` statements with centralized logging.
+- [ ] Create separate log files for each host:
   - `host_a.log`
   - `host_b.log`
-- [x] Create a third combined simulation log:
+- [ ] Create a third combined simulation log:
   - `simulation.log`
-- [x] Include simulation tick and host information in logs.
-- [x] Example:
+- [ ] Include simulation tick and host information in logs.
+- [ ] Example:
   - `[tick=100] [HOST_A] TX bit=0`
   - `[tick=100] [HOST_B] RX bit=0`
-- [x] The combined log should allow the complete interaction between both hosts to be reconstructed.
-- [x] Keep diagnostic logs separate from user-facing CLI output.
-- [x] Verify all three log files after implementation.
+- [ ] The combined log should allow the complete interaction between both hosts to be reconstructed.
+- [ ] Keep diagnostic logs separate from user-facing CLI output.
+- [ ] Verify all three log files after implementation.
 
 ### 3. Build the CLI
 

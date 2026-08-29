@@ -1,8 +1,0 @@
-Host is      : HostA
-Host type    : TxHost
-start_tick   : 0
-
-[TICK 100] :: Transmission started
-[TICK 101] :: Sending bit 1
-[TICK 101] :: Sending bit 0
-[TICK 103] :: Frame transmitted
