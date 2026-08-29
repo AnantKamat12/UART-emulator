@@ -1,10 +1,13 @@
 from uart_emulator.simulation.VirtualChannel import VirtualChannel as VC
+from uart_emulator.infrastructure.Logger import logger
 
 
 class Tx:
-    def __init__(self, baud_rate=9600):
+    def __init__(self, baud_rate=9600, event_logger=None, hostname="HOST"):
         self.baud_rate = baud_rate
         self.vc = VC()
+        self.logger = event_logger
+        self.hostname = hostname
 
         # Keep the simulation convention explicit.
         self.ticks_per_bit = 100
@@ -46,7 +49,10 @@ class Tx:
             line=self.line
         )
 
-        print(f"tick={current_tick}: TX bit={bit}")
+        message = f"[{self.hostname}] TX bit={bit}"
+        if self.logger is not None:
+            self.logger.write(message, current_tick)
+        logger.logprint(message, current_tick)
         self.bit_index += 1
 
         if self.bit_index >= 16:

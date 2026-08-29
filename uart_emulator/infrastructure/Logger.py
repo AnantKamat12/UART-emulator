@@ -38,9 +38,7 @@ class logger:
         # Create a log file for this logger
         # ----------------------------------------------------
 
-        self.filename = (
-            f"{self.hostname}_{self.log_id}.log"
-        )
+        self.filename = f"{str(self.hostname).lower()}.log"
         os.makedirs("UARTlogs", exist_ok=True)
         self.file = open(
             f"UARTlogs/{self.filename}",
@@ -79,7 +77,7 @@ class logger:
             current_tick = self.curr
 
         log_entry = (
-            f"[TICK {current_tick}] :: "
+            f"[tick={current_tick}] "
             f"{log_statement}\n"
         )
 
@@ -103,6 +101,26 @@ class logger:
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
+    @classmethod
+    def logprint(cls, logs, tick):
+        filename = "simulation.log"
+        os.makedirs("UARTlogs", exist_ok=True)
+        file = open(
+            f"UARTlogs/{filename}",
+            "a",
+            encoding="utf-8"
+        )
+        log_entry = (
+            f"[tick={tick}] "
+            f"{logs}\n"
+        )
+        file.write(log_entry)
+        file.close()
+        #print for terminal
+        print(log_entry)
+
+    
+
 
 
 # ============================================================

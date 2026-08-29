@@ -1,4 +1,5 @@
 from uart_emulator.uart.Host import Host
+from uart_emulator.infrastructure.Logger import logger
 
 
 class UARTConnection:
@@ -42,7 +43,7 @@ class UARTConnection:
 
             current_tick = self.clk.curr_tick()
 
-            print(f"\n--- TICK {current_tick} ---")
+            logger.logprint("Simulation tick", current_tick)
 
             # Both hosts operate at the SAME simulated tick.
             self.hostA.step()

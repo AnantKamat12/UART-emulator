@@ -1,6 +1,6 @@
 from pathlib import Path
 import sys
-
+print(__file__)
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from uart_emulator.uart.Host import Host

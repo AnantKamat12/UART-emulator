@@ -2,6 +2,7 @@ from uart_emulator.uart.Receiver import Rx
 from uart_emulator.uart.Transmitter import Tx
 from uart_emulator.protocol.Reassembler import Reassembler as RA
 from uart_emulator.simulation.Timing import Clock as CLK
+from uart_emulator.infrastructure.Logger import HostType, logger
 
 
 class Host:
@@ -11,7 +12,8 @@ class Host:
         host_type,
         baud_rate=9600,
         data_type=1,
-        host_transmit_lane=0
+        host_transmit_lane=0,
+        hostname=None
     ):
         self.baud_rate = baud_rate
         self.host_type = host_type
@@ -21,6 +23,21 @@ class Host:
         # Host B transmits on line 1 and receives on line 0.
         self.host_transmit_lane = host_transmit_lane
         self.host_receive_lane = 1 - host_transmit_lane
+        self.hostname = hostname or (
+            "HOST_A" if host_transmit_lane == 0 else "HOST_B"
+        )
+
+        host_type_names = {
+            0: HostType.TxHost,
+            1: HostType.RxHost,
+            2: HostType.DuplexHost,
+        }
+        self.logger = logger(
+            log_id=0,
+            hostname=self.hostname,
+            start_tick=0,
+            host_type=host_type_names.get(host_type, HostType.DuplexHost)
+        )
 
         self.rck_reassembler = RA(data_type)
         self.send_reassembler = RA(data_type)
@@ -37,10 +54,10 @@ class Host:
             )
 
         if self.host_type in [0, 2]:
-            self.tx = Tx(self.baud_rate)
+            self.tx = Tx(self.baud_rate, self.logger, self.hostname)
 
         if self.host_type in [1, 2]:
-            self.rx = Rx(self.baud_rate)
+            self.rx = Rx(self.baud_rate, self.logger, self.hostname)
 
     def start_send(self, frame, start_tick,line):
         """Queue a frame for transmission at the requested start tick."""
@@ -69,10 +86,12 @@ class Host:
             )
 
             if frame is not None:
-                print(
-                    f"Host received complete frame "
-                    f"at tick {current_tick}: {frame:016b}"
+                message = (
+                    f"[{self.hostname}] received complete frame: "
+                    f"{frame:016b}"
                 )
+                self.logger.write(message, current_tick)
+                logger.logprint(message, current_tick)
 
                 # Later we can pass this into your reassembler
                 # self.rck_reassembler.decode(frame)

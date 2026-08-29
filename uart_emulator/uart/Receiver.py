@@ -1,10 +1,13 @@
 from uart_emulator.simulation.VirtualChannel import VirtualChannel as VC
+from uart_emulator.infrastructure.Logger import logger
 
 
 class Rx:
-    def __init__(self, baud_rate=9600):
+    def __init__(self, baud_rate=9600, event_logger=None, hostname="HOST"):
         self.baud_rate = baud_rate
         self.vc = VC()
+        self.logger = event_logger
+        self.hostname = hostname
 
         self.ticks_per_bit = 100
 
@@ -28,7 +31,10 @@ class Rx:
         if bit is None:
             return None
 
-        print(f"tick={current_tick}: RX bit={bit}")
+        message = f"[{self.hostname}] RX bit={bit}"
+        if self.logger is not None:
+            self.logger.write(message, current_tick)
+        logger.logprint(message, current_tick)
 
         if not self.receiving:
             self.receiving = True
@@ -40,7 +46,13 @@ class Rx:
 
         if self.bit_index == 16:
             received_frame = self.frame
-            print(f"tick={current_tick}: RX complete frame={received_frame:016b}")
+            message = (
+                f"[{self.hostname}] RX complete frame="
+                f"{received_frame:016b}"
+            )
+            if self.logger is not None:
+                self.logger.write(message, current_tick)
+            logger.logprint(message, current_tick)
             self.reset_receiver()
             return received_frame
 
