@@ -71,6 +71,13 @@ class Host:
             start_tick=start_tick,
             line=line
         )
+    #send logger for custom log printing in test cases
+    @property
+    def host_logger(self):
+        return self.logger
+    def current_rcvd_data(self):
+        if self.rck_reassembler is not None:
+            return self.rck_reassembler.rcvd_data_comb()
 
     def step(self):
         """Advance one simulation tick and let TX/RX operate at that tick."""
@@ -94,4 +101,6 @@ class Host:
                 logger.logprint(message, current_tick)
 
                 # Later we can pass this into your reassembler
-                # self.rck_reassembler.decode(frame)
+                self.rck_reassembler.decode(frame)
+                #would be handled later by test cases
+            

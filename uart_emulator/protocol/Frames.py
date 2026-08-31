@@ -4,33 +4,36 @@ class Frame():
     #8bit data frame with parity bit and start bit
     #parity = 0(even) or 1(odd)
     #1401 frame format: start bit(4 bit) + data(8 bits) + parity bit(1 bit)+ stop bit(3 bits)
-    def __init__(self,start=0b0101, parity=0,data=None,stop=0b010): 
+    def __init__(self,start=0b0101, parity=0,data=None,stop=0b010,data_size:int=1): 
         self.start = start
         self.parity = parity & 0x01 #ensure parity is 1 bit
-        self.data = self.encode_data(data)#encode_data ensures data is 8 bits
+        self.data_size=data_size #in bytes
+        self.data = self.encode_data(data,data_size)#encode_data ensures data is 8 bits
         self.stop = stop & 0x7 #ensure stop is 3 bits
         self.parity_bit = None #parity bit will be calculated during serialisation
-    def encode_data(self, data):
-    # Accept int, bytes/bytearray, str, or None and return 8-bit int
+    def encode_data(self, data, data_size=1):
+    # Accept int, bytes/bytearray, str, or None and return value masked to data_size bits
         if data is None:
             return 0
         if isinstance(data, int):
-            return data & 0x0FF
+            mask = (1 << (data_size * 8)) - 1
+            return data & mask
         if isinstance(data, str):
             b = data.encode('ascii', 'ignore')
         elif isinstance(data, (bytes, bytearray)):
             b = bytes(data)
         else:
             raise TypeError("data must be int, str, bytes, or None")
-        # use struct to get a 16-bit value from up to two bytes, then mask to 8 bits
-        if len(b) >= 2:
-            val = st.unpack('>H', b[:2])[0] #unsigned short, big-endian(Msb first) #keep only the first
-            #two bytes and return value as an integer
-        elif len(b) == 1:
-            val = b[0]
-        else:
-            val = 0
-        return val & 0x0FF #only keep the lower 8 bits
+        
+        # Extract bytes based on data_size
+        val = 0
+        for i in range(min(len(b), data_size)):
+            val = (val << 8) | b[i] #one asci is 8 bit long so shift by 8
+             # big-endian: most significant byte first
+        
+        # Mask to the correct size
+        mask = (1 << (data_size * 8)) - 1
+        return val & mask
     def serialise(self):
         #pack the data into a binary format
         countbits = bin(self.data).count('1')
@@ -44,21 +47,43 @@ class Frame():
                 parity_bit = 1
             else:
                 parity_bit = 0
-                
-        pkd_frame= self.start << 12 | self.data << 4 | parity_bit<<3 | self.stop 
-        return st.pack('>H', pkd_frame) #big-endian unsigned short
+        
+        # Frame structure: start(4) + data(data_size*8) + parity(1) + stop(3)
+        pkd_frame = self.start << (self.data_size * 8 + 4)
+        pkd_frame |= self.data << 4
+        pkd_frame |= parity_bit << 3
+        pkd_frame |= self.stop
+        
+        # Pack to correct number of bytes: total bits = 4+data_size*8+1+3
+        total_bits = self.data_size * 8 + 8
+        total_bytes = (total_bits + 7) // 8
+        
+        if total_bytes == 1:
+            return st.pack('>B', pkd_frame)
+        elif total_bytes == 2:
+            return st.pack('>H', pkd_frame)
+        elif total_bytes == 3:
+            return st.pack('>I', pkd_frame)[1:]  # Take last 3 bytes from 4-byte int
+        elif total_bytes == 4:
+            return st.pack('>I', pkd_frame)
+        else:
+            raise ValueError(f"Unsupported frame size: {total_bytes} bytes")
     
     def __str__(self):
         return f"Frame(start={bin(self.start)}, parity={self.parity}, data={bin(self.data)}, stop={bin(self.stop)})"
 class Deserialise:
-    def __init__(self, start=0b0101, parity=0, stop=0b010):
+    def __init__(self, start=0b0101, parity=0, stop=0b010,data_size=1):
         self.start = start & 0xF
         self.parity = parity & 0x01
         self.stop = stop & 0x7
+        self.data_size=data_size
 
     def decode_data(self, frame):
-        start = (frame >> 12) & 0xF
-        data = (frame >> 4) & 0xFF
+        # Extract fields based on data_size
+        # Frame structure: start(4) + data(data_size*8) + parity(1) + stop(3)
+        start = (frame >> (self.data_size * 8 + 4)) & 0xF
+        data_mask = (1 << (self.data_size * 8)) - 1
+        data = (frame >> 4) & data_mask
         parity_bit = (frame >> 3) & 0x01
         stop = frame & 0x7
         status="OK"
@@ -74,7 +99,7 @@ class Deserialise:
 
         if stop != self.stop:
             status="FE"
-        return status,data
+        return status, data
     def decode_frame(self, frame_bytes):
         """
         Decode a serialized frame.
@@ -83,10 +108,25 @@ class Deserialise:
             bytes produced by Frame.serialise()
         """
 
-        if len(frame_bytes) != 2:
-            raise ValueError("UART frame must contain exactly 2 bytes")
+        # Expected frame size: (data_size * 8 + 8) bits = (data_size + 1) bytes
+        expected_bytes = self.data_size + 1
+        if len(frame_bytes) != expected_bytes:
+            raise ValueError(
+                f"UART frame must contain exactly {expected_bytes} bytes "
+                f"for data_size={self.data_size}; got {len(frame_bytes)}"
+            )
 
-        frame = st.unpack(">H", frame_bytes)[0]
+        # Unpack based on frame size
+        if expected_bytes == 1:
+            frame = st.unpack(">B", frame_bytes)[0]
+        elif expected_bytes == 2:
+            frame = st.unpack(">H", frame_bytes)[0]
+        elif expected_bytes == 3:
+            frame = st.unpack(">I", b'\x00' + frame_bytes)[0]  # Pad to 4 bytes
+        elif expected_bytes == 4:
+            frame = st.unpack(">I", frame_bytes)[0]
+        else:
+            raise ValueError(f"Unsupported frame size: {expected_bytes} bytes")
 
         return self.decode_data(frame)
 

@@ -33,7 +33,7 @@
   - Host B
 - [ ] Allow the user to select data type:
   - String
-  - Character
+  - byte
   - Integer
 - [ ] Accept user input.
 - [ ] Validate the input according to the selected type.
@@ -57,21 +57,21 @@
 
 ### 4. Configurable Frame Data Bits `[IMP]`
 
-- [ ] Make the number of data bits configurable.
-- [ ] Initially support:
+- [x] Make the number of data bits configurable.
+- [x] Initially support:
   - 8 bits
   - 16 bits
   - 24 bits
-- [ ] Ensure the complete pipeline respects the selected width:
+- [x] Ensure the complete pipeline respects the selected width:
   - Frame creation
   - Serialization
   - TX
   - RX
   - Deserialization
   - Reassembly
-- [ ] Remove hardcoded assumptions such as fixed 2-byte frame handling.
-- [ ] Add CLI configuration for data-bit width once the core supports it.
+- [x] Add CLI configuration for data-bit width once the core supports it.
 - [ ] Test each supported frame width independently.
+- Can add a waveframe whic is high for first half of 50 ticks and low for next half
 
 ### 5. Validate the project after each stage
 
