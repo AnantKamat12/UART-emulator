@@ -82,6 +82,23 @@
 - [ ] Ensure existing TX → VC → RX timing behavior remains unchanged.
 - [] AT last beautify class names, and file names, object names to a standard
 
+### 6. Waveform Visualization (with data transmission markers)
+
+- [ ] Build 3D visualization showing UART transmission timing.
+- [ ] X-axis: simulation ticks.
+- [ ] Y-axis: waveform state (1 for high, -1 for low) from `Waveframe.wave()`.
+- [ ] Dots/markers: mark the exact tick when data bits are transmitted (usually at rising edges).
+- [ ] Show frame boundaries and bit transitions.
+- [ ] Use test cases to generate waveform data for visualization.
+- [ ] Display or export waveform plots (matplotlib/plotly).
+- [ ] Example output:
+  ```
+  Wave:  1 ----\____/----\____/----
+  Ticks: 0    50   100  150  200
+  Data:  •         •         •       (marks showing TX at specific ticks)
+  ```
+- [ ] Validate timing alignment with RX bit reception.
+
 ---
 
 # Version 3 — Flask Web UI
