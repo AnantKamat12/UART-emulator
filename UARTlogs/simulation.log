@@ -197,3 +197,4 @@
 [tick=3300] [HOST_A] TX bit=0
 [tick=3300] [HOST_B] RX bit=0
 [tick=3300] [HOST_B] RX complete frame=0101011011101010
+[tick=9] ask

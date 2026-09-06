@@ -13,23 +13,43 @@ class Reassembler:
         self.data_type = data_type
         self.rcvd_data = []
 
-    def decode(self, frame):
+    def decode(self, frame, non_ideal_vc=False):
         status,raw_data = DS().decode_frame(frame)
-        if status!="OK":
-            #frame will be not decoded at all,data lost,so return None
-            return None
-        else:
-            if self.data_type == 0:
-                data = raw_data
+        if not non_ideal_vc:
+            if status!="OK":
+                #frame will be not decoded at all,data lost,so return None
 
-            elif self.data_type == 1:
-                data = chr(raw_data)
+                return None
+            else:
+                if self.data_type == 0:
+                    data = raw_data
+
+                elif self.data_type == 1:
+                    data = chr(raw_data)
+
+                else:
+                    data = bytes([raw_data])
+
+                self.rcvd_data.append(data)
+                return data
+        else:
+            if status!="OK":
+                return f"Corrupted Frame due to {status},data lost"
 
             else:
-                data = bytes([raw_data])
+                if self.data_type == 0:
+                    data = raw_data
 
-            self.rcvd_data.append(data)
-            return data
+                elif self.data_type == 1:
+                    data = chr(raw_data)
+
+                else:
+                    data = bytes([raw_data])
+
+                self.rcvd_data.append(data)
+                return data
+
+
     def rcvd_data_comb(self):
         return ''.join(self.rcvd_data)
     

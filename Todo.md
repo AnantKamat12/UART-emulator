@@ -46,6 +46,7 @@
   - [ ] Route through: User Input → Frame → TX → VC → RX → Reassembler
   - [ ] Display: transmitted data, received data, success/failure status
 - [ ] Test with all three frame widths (8/16/24-bit)
+- []  Implement a test case for ACk/NACK also put error in Vc
 
 #### 5. Final Polish & Quality (Priority 2)
 
@@ -55,6 +56,7 @@
   - [ ] How to run CLI (once completed)
   - [ ] Document frame structure for 8/16/24-bit modes
   - [ ] Example transmission flow with expected output
+  
 
 - [ ] **Error Handling & Edge Cases**
   - [ ] Test corrupted frames (false start, parity error, framing error)
@@ -86,6 +88,7 @@ These are nice enhancements but not required for a solid project:
 - Mark data transmission points with dots/markers
 - Show timing alignment between TX and RX
 - Export plots to file (matplotlib/plotly)
+
 
 ### Flask Web UI
 

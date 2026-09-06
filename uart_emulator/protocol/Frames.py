@@ -1,5 +1,6 @@
 import struct as st
 from uart_emulator.protocol.Segmenter import segmenter as sg
+from uart_emulator.protocol.ACK import ACK
 class Frame():
     #8bit data frame with parity bit and start bit
     #parity = 0(even) or 1(odd)
@@ -68,6 +69,19 @@ class Frame():
             return st.pack('>I', pkd_frame)
         else:
             raise ValueError(f"Unsupported frame size: {total_bytes} bytes")
+    @classmethod
+    def gen_ack_nack_frame(cls, ack_nck:int=0, start=0b0101, parity=0, stop=0b010, data_size=1):
+        """ack_nck=0 for ACK, ack_nck=1 for NACK"""
+        if ack_nck == 0:
+            data = ACK.ACK.value
+        elif ack_nck == 1:
+            data = ACK.NACK.value
+        else:
+            raise ValueError("ack_nck must be 0 (ACK) or 1 (NACK)")
+        
+        return cls(start=start, parity=parity, data=data, stop=stop, data_size=data_size)
+
+
     
     def __str__(self):
         return f"Frame(start={bin(self.start)}, parity={self.parity}, data={bin(self.data)}, stop={bin(self.stop)})"
@@ -100,6 +114,7 @@ class Deserialise:
         if stop != self.stop:
             status="FE"
         return status, data
+
     def decode_frame(self, frame_bytes):
         """
         Decode a serialized frame.

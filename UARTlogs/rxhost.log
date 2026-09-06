@@ -1,0 +1,6 @@
+Host is      : rxhost
+Host type    : RxHost
+start_tick   : 0
+
+[tick=2] anant
+[tick=2] abcd
