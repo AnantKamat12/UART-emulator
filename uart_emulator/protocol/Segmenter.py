@@ -2,6 +2,8 @@ import struct as st
 class segmenter:
     #segmenter must import host?
     def __init__(self, max_segment_size=8):
+        if max_segment_size % 8 != 0:
+            raise ValueError("max_segment_size must be a multiple of 8")
         self.max_segment_size = max_segment_size
     def segment_data(self, data):
         # Accept str, bytes/bytearray, or None and return list of segments

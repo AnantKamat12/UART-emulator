@@ -13,8 +13,8 @@ class Reassembler:
         self.data_type = data_type
         self.rcvd_data = []
 
-    def decode(self, frame, non_ideal_vc=False):
-        status,raw_data = DS().decode_frame(frame)
+    def decode(self, frame, non_ideal_vc=False,data_size:int=1):
+        status,raw_data = DS(data_size=data_size).decode_frame(frame)
         if not non_ideal_vc:
             if status!="OK":
                 #frame will be not decoded at all,data lost,so return None
@@ -25,10 +25,10 @@ class Reassembler:
                     data = raw_data
 
                 elif self.data_type == 1:
-                    data = chr(raw_data)
+                    data = raw_data.to_bytes(data_size, byteorder='big').decode('ascii')
 
                 else:
-                    data = bytes([raw_data])
+                    data = raw_data.to_bytes(data_size, byteorder='big')
 
                 self.rcvd_data.append(data)
                 return data
@@ -41,17 +41,23 @@ class Reassembler:
                     data = raw_data
 
                 elif self.data_type == 1:
-                    data = chr(raw_data)
+                    data = raw_data.to_bytes(data_size, byteorder='big').decode('ascii')
 
                 else:
-                    data = bytes([raw_data])
+                    data = raw_data.to_bytes(data_size, byteorder='big')
 
                 self.rcvd_data.append(data)
                 return data
 
-
+    def get_data(self):
+        return self.rcvd_data
     def rcvd_data_comb(self):
-        return ''.join(self.rcvd_data)
+        if self.data_type == 0:
+            return self.rcvd_data
+        elif self.data_type == 1:
+            return ''.join(self.rcvd_data)
+        else:
+            return b''.join(self.rcvd_data) 
     
 if __name__ == "__main__":
     sg = sg(max_segment_size=8)
