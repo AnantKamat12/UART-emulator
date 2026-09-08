@@ -74,7 +74,12 @@
   - [x] Primitive test passes after all changes
   - [x] Logs are created and contain correct format
   - [ ] Each frame width (8/16/24) transmits and receives correctly
-
+1. Build the test matrix
+2. Integrate ACK/NACK retransmission
+3. Finish the CLI
+4. Complete documentation3
+5. Rename and polish the project
+6. Run the complete test suite
 ---
 
 ## Optional / Future (Version 3+)
