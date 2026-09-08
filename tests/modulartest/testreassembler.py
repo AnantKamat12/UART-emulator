@@ -1,21 +1,43 @@
-import testframe as tf
 import sys
 from pathlib import Path
+import unittest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-import uart_emulator.protocol.Reassembler as RA
 
-class TestReassembler:
-    def __init__(self, data_type):
-        self.reassembler = RA.Reassembler(data_type=data_type)
+from uart_emulator.protocol.Frames import Frame
+from uart_emulator.protocol.Reassembler import Reassembler
 
-    def test_reassemble(self, serialized_frames, data_sizes):
-        for frame, size in zip(serialized_frames, data_sizes):
-            self.reassembler.decode(frame, data_size=size)
-        return self.reassembler.get_data(), self.reassembler.rcvd_data_comb()
+
+class TestReassembler(unittest.TestCase):
+    def test_reassemble_integer_data(self):
+        reassembler = Reassembler(data_type=0)
+        frames = [
+            Frame(data="A", data_size=1).serialise(),
+            Frame(data="AB", data_size=2).serialise(),
+            Frame(data="ABC", data_size=3).serialise(),
+        ]
+
+        for frame, size in zip(frames, [1, 2, 3]):
+            reassembler.decode(frame, data_size=size)
+
+        self.assertEqual(
+            reassembler.get_data(),
+            [0x41, 0x4142, 0x414243]
+        )
+
+    def test_corrupted_frame_is_reported(self):
+        reassembler = Reassembler(data_type=0)
+        frame = bytearray(Frame(data="A").serialise())
+        frame[0] ^= 0b00000001
+
+        result = reassembler.decode(
+            bytes(frame),
+            non_ideal_vc=True,
+            data_size=1
+        )
+
+        self.assertIn("Corrupted Frame", result)
+
+
 if __name__ == "__main__":
-    test_reassembler = TestReassembler(data_type=1)  # 1 for string
-    serialized_frames = [tf.serialized_frame1, tf.serialized_frame2, tf.serialized_frame3]
-    data_sizes = [1, 2, 3]
-    received_data, combined_data = test_reassembler.test_reassemble(serialized_frames, data_sizes)
-    print("Received Data:", received_data)
-    print("Combined Data:", combined_data)
+    unittest.main()

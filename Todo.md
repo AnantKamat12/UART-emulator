@@ -46,17 +46,16 @@
   - [ ] Route through: User Input → Frame → TX → VC → RX → Reassembler
   - [ ] Display: transmitted data, received data, success/failure status
 - [ ] Test with all three frame widths (8/16/24-bit)
-- []  Implement a test case for ACk/NACK also put error in Vc
+- [] Implement a test case for ACk/NACK also put error in Vc
 
 #### 5. Final Polish & Quality (Priority 2)
 
-- [ ] **README.md**
-  - [ ] Explain UART emulator purpose and what it demonstrates
-  - [ ] How to run tests: `python tests\primitive_test.py`
+- [x] **README.md**
+  - [x] Explain UART emulator purpose and what it demonstrates
+  - [x] How to run tests: `python tests\primitive_test.py`
   - [ ] How to run CLI (once completed)
-  - [ ] Document frame structure for 8/16/24-bit modes
-  - [ ] Example transmission flow with expected output
-  
+  - [x] Document frame structure for 8/16/24-bit modes
+  - [x] Example transmission flow with expected output
 
 - [ ] **Error Handling & Edge Cases**
   - [ ] Test corrupted frames (false start, parity error, framing error)
@@ -72,8 +71,8 @@
   - [ ] Add type hints to function parameters
 
 - [ ] **Validation Checklist**
-  - [ ] Primitive test passes after all changes
-  - [ ] Logs are created and contain correct format
+  - [x] Primitive test passes after all changes
+  - [x] Logs are created and contain correct format
   - [ ] Each frame width (8/16/24) transmits and receives correctly
 
 ---
@@ -88,7 +87,6 @@ These are nice enhancements but not required for a solid project:
 - Mark data transmission points with dots/markers
 - Show timing alignment between TX and RX
 - Export plots to file (matplotlib/plotly)
-
 
 ### Flask Web UI
 

@@ -1,21 +1,23 @@
 import sys
-from pathlib import Path    
+from pathlib import Path
+import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from uart_emulator.protocol.Segmenter import segmenter as SG
-data = b"Hello, this is a test message for the Segmenter class."
-class TestSegmenter:
-    def __init__(self, max_segment_size):
-        self.segmenter = SG(max_segment_size=max_segment_size)
+class TestSegmenter(unittest.TestCase):
+    def test_segments_respect_maximum_size(self):
+        segmenter = SG(max_segment_size=16)
+        segments = segmenter.segment_data(b"ABCDEF")
 
-    def test_segment_data(self, data):
-        segments = self.segmenter.segment_data(data)
-        print(f"Segments (max size {self.segmenter.max_segment_size}):")
-        for i, segment in enumerate(segments):
-            print(f"Segment {i + 1}: {segment}")
+        self.assertEqual(segments, [b"AB", b"CD", b"EF"])
+        segmenter2 = SG(max_segment_size=8)
+        segments2 = segmenter2.segment_data(b"ABCD")  
+        self.assertEqual(segments2, [b"A", b"B", b"C", b"D"])
+
+    def test_rejects_non_byte_aligned_size(self):
+        with self.assertRaises(ValueError):
+            SG(max_segment_size=7)
+
+
 if __name__ == "__main__":
-    test_segmenter = TestSegmenter(max_segment_size=16)
-
-    test_segmenter.test_segment_data(data)
-    test_segmenter2 = TestSegmenter(max_segment_size=8)
-    test_segmenter2.test_segment_data(data)
+    unittest.main()
 
