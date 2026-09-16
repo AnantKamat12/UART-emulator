@@ -74,12 +74,36 @@
   - [x] Primitive test passes after all changes
   - [x] Logs are created and contain correct format
   - [ ] Each frame width (8/16/24) transmits and receives correctly
+
 1. Build the test matrix
 2. Integrate ACK/NACK retransmission
 3. Finish the CLI
 4. Complete documentation3
 5. Rename and polish the project
 6. Run the complete test suite
+
+---
+
+#### 6. Final Protocol Test Coverage
+
+- [ ] Add a full-duplex communication test
+  - [ ] Schedule Host A and Host B transmissions at independent ticks
+  - [ ] Verify both hosts can transmit and receive in the same simulation
+  - [ ] Verify messages are reassembled correctly in both directions
+  - [ ] Cover overlapping and back-to-back transmissions
+- [ ] Add ACK/NACK testing with a non-ideal VirtualChannel
+  - [ ] Inject bit errors through the configured noise rate
+  - [ ] Verify corrupted frames produce NACK feedback
+  - [ ] Verify valid frames produce ACK feedback
+  - [ ] Verify the feedback frame uses the correct data size
+  - [ ] Add retransmission coverage after NACK
+- [ ] Create a small public test/CLI API module
+  - [ ] Expose simple host, frame, channel, and clock setup helpers
+  - [ ] Expose a function to transmit one message and return the result
+  - [ ] Expose received data, frame status, ACK/NACK status, and simulation ticks
+  - [ ] Keep the API independent from command-line input/output
+  - [ ] Reuse the same API from custom tests and the upcoming CLI
+
 ---
 
 ## Optional / Future (Version 3+)
