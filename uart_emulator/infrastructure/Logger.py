@@ -21,11 +21,12 @@ class HostType(enum.Enum):
 
 class logger:
 
-    def __init__(self, log_id, hostname, start_tick, host_type):
+    def __init__(self, log_id, hostname, start_tick, host_type,logger_name=None):
         self.log_id = log_id
         self.hostname = hostname
         self.start_tick = start_tick
         self.host_type = host_type
+        self.logger_name = logger_name
 
         # ----------------------------------------------------
         # Tick tracking
@@ -37,8 +38,10 @@ class logger:
         # ----------------------------------------------------
         # Create a log file for this logger
         # ----------------------------------------------------
-
-        self.filename = f"{str(self.hostname).lower()}.log"
+        if self.logger_name:
+            self.filename = f"{str(self.logger_name).lower()}.log"
+        else:
+            self.filename = f"{str(self.hostname).lower()}.log"
         os.makedirs("UARTlogs", exist_ok=True)
         self.file = open(
             f"UARTlogs/{self.filename}",

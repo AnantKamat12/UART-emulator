@@ -1,5 +1,6 @@
 import struct as st
 class segmenter:
+    
     #segmenter must import host?
     def __init__(self, max_segment_size=8):
         if max_segment_size % 8 != 0:
@@ -21,9 +22,9 @@ class segmenter:
         segments = []
         for i in range(0, len_of_data, bytes_per_segment):
             segment = b[i:i+bytes_per_segment]
+            if len(segment) < bytes_per_segment:
+                segment += b'\x24' * (bytes_per_segment - len(segment))#append $ to make it byte aligned
             segments.append(segment)
-
-        
 
         return segments
 if __name__ == "__main__":

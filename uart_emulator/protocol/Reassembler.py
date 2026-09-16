@@ -13,6 +13,14 @@ class Reassembler:
         self.data_type = data_type
         self.rcvd_data = []
 
+    @staticmethod
+    def finddollar(data):
+        return "$" in data
+
+    @staticmethod
+    def removedollar(data):
+        return data.rstrip("$")
+
     def decode(self, frame, non_ideal_vc=False,data_size:int=1):
         status,raw_data = DS(data_size=data_size).decode_frame(frame)
         if not non_ideal_vc:
@@ -26,6 +34,8 @@ class Reassembler:
 
                 elif self.data_type == 1:
                     data = raw_data.to_bytes(data_size, byteorder='big').decode('ascii')
+                    if self.finddollar(data):
+                        data = self.removedollar(data)
 
                 else:
                     data = raw_data.to_bytes(data_size, byteorder='big')
@@ -42,6 +52,9 @@ class Reassembler:
 
                 elif self.data_type == 1:
                     data = raw_data.to_bytes(data_size, byteorder='big').decode('ascii')
+                    if self.finddollar(data):
+                        data = self.removedollar(data)
+
 
                 else:
                     data = raw_data.to_bytes(data_size, byteorder='big')
