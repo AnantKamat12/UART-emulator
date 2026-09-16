@@ -1,15 +1,41 @@
 from pathlib import Path
 import sys
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
 	sys.path.insert(0, str(ROOT))
 
-from uart_emulator.protocol.Frames import Frame
+from uart_emulator.protocol.ACK import ACK
+from uart_emulator.protocol.Frames import Deserialise, Frame
 from uart_emulator.protocol.Reassembler import Reassembler
 from uart_emulator.simulation.Timing import Clock
 from uart_emulator.simulation.VirtualChannel import VirtualChannel
 from uart_emulator.uart.Host import Host
+import numpy as np
+
+def get_bit_stream(size=8):
+	
+	"""return a random bit stream of the given size as a list of 0s and 1s"""
+	arr=np.random.randint(0, 2, size=size).tolist()
+	return arr
+def get_random_integer(start,end,size):
+	"""return random integers in given range as a list of integers"""	
+	return np.random.randint(start, end, size=size).tolist()
+def get_random_bytes(size):
+    """return random bytes of the given size as a list of bytes"""
+    arr=np.random.randint(0, 256, size=size).tolist()
+    return arr
+def get_random_string(strings=None, size=1):
+	"""Return random strings from the provided list or a built-in default list."""
+	if strings is None or len(strings) == 0:
+		strings = [
+			"Anant-Kamat",
+			"Loves",
+			"Dante-wrote-divine-comedy",
+			"UART",
+			"Emulator",
+		]
+	return np.random.choice(strings, size=size).tolist()
 
 
 def reset_simulation():
@@ -67,6 +93,21 @@ def decode_frame(frame_bytes, data_type=1, data_size=1, non_ideal=False):
 		frame_bytes,
 		data_size=data_size,
 		non_ideal_vc=non_ideal,
+	)
+
+
+def get_ack_nack_from_frame(ack_nck=0, data_size=1, status="PE"):
+	"""Generate feedback for a frame status.
+
+	``status="OK"`` returns no feedback. Any other status returns the
+	requested ACK/NACK frame, where ``ack_nck=0`` is ACK and ``1`` is NACK.
+	"""
+	if status == "OK":
+		return None
+
+	return Frame.gen_ack_nack_frame(
+		ack_nck=ack_nck,
+		data_size=data_size,
 	)
 
 
@@ -129,3 +170,10 @@ def close_hosts(*hosts):
 	"""Close host loggers after a custom test or CLI run."""
 	for host in hosts:
 		host.logger.close()
+if __name__ == "__main__":
+        
+        
+        str=get_random_string(strings=None)
+        print(f"Random string: {str}")
+        print(get_bit_stream(size=10))
+
