@@ -53,7 +53,7 @@
 - [x] **README.md**
   - [x] Explain UART emulator purpose and what it demonstrates
   - [x] How to run tests: `python tests\primitive_test.py`
-  - [ ] How to run CLI (once completed)
+  - [x] How to run CLI
   - [x] Document frame structure for 8/16/24-bit modes
   - [x] Example transmission flow with expected output
 
@@ -86,23 +86,35 @@
 
 #### 6. Final Protocol Test Coverage
 
-- [ ] Add a full-duplex communication test
-  - [ ] Schedule Host A and Host B transmissions at independent ticks
-  - [ ] Verify both hosts can transmit and receive in the same simulation
-  - [ ] Verify messages are reassembled correctly in both directions
-  - [ ] Cover overlapping and back-to-back transmissions
+- [x] Add a full-duplex communication test
+  - [x] Schedule Host A and Host B transmissions at independent ticks
+  - [x] Verify both hosts can transmit and receive in the same simulation
+  - [x] Verify messages are reassembled correctly in both directions
+  - [x] Cover overlapping and back-to-back transmissions
 - [ ] Add ACK/NACK testing with a non-ideal VirtualChannel
   - [ ] Inject bit errors through the configured noise rate
   - [ ] Verify corrupted frames produce NACK feedback
   - [ ] Verify valid frames produce ACK feedback
   - [ ] Verify the feedback frame uses the correct data size
   - [ ] Add retransmission coverage after NACK
-- [ ] Create a small public test/CLI API module
-  - [ ] Expose simple host, frame, channel, and clock setup helpers
-  - [ ] Expose a function to transmit one message and return the result
-  - [ ] Expose received data, frame status, ACK/NACK status, and simulation ticks
-  - [ ] Keep the API independent from command-line input/output
-  - [ ] Reuse the same API from custom tests and the upcoming CLI
+- [x] Create a small public test/CLI API module
+  - [x] Expose simple host, frame, channel, and clock setup helpers
+  - [x] Expose a function to transmit one message and return the result
+  - [x] Expose received data, frame status, ACK/NACK status, and simulation ticks
+  - [x] Keep the API independent from command-line input/output
+  - [x] Reuse the same API from custom tests and the upcoming CLI
+
+### Remaining Work
+
+- [ ] Rebuild and improve `ACK_NCK.py` retransmission test
+- [ ] Rebuild and improve `mainCLI.py` interactive CLI
+- [ ] Integrate ACK/NACK feedback into Host and Receiver
+- [ ] Implement retransmission after NACK
+- [ ] Add noisy-channel ACK/NACK tests
+- [ ] Complete CLI input validation and transmission flow
+- [ ] Rename files consistently
+- [ ] Fix imports after file renaming
+- [ ] Run and document the complete test suite
 
 ---
 

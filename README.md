@@ -6,7 +6,7 @@ The project models communication from application data down to individual transm
 
 **Started:** 09/08/2026
 **Version 1 completed:** 21/08/2026
-**Current version:** Version 2 — In Progress
+**Current version:** Version 2 — Core simulation complete
 
 ---
 
@@ -22,15 +22,15 @@ The original end-to-end UART path is working. Version 2 is improving the organiz
 - Added protocol-layer frame data sizes of 8, 16, and 24 bits.
 - Added ACK/NACK frame generation through `Frame.gen_ack_nack_frame()`.
 - Added optional random bit flipping to `VirtualChannel`.
-- Added primitive, logger, and noisy-channel tests.
+- Added primitive, logger, noisy-channel, edge-case, and full-duplex tests.
+- Added an interactive CLI for one-byte transmissions.
 
-### In Progress
+### Remaining protocol work
 
-- Finish the interactive CLI.
 - Make the selected frame width consistent through TX and RX.
 - Add complete ACK/NACK response and retransmission behavior.
 - Expand error handling and edge-case coverage.
-- Improve documentation and naming consistency.
+- Finish documentation and naming cleanup.
 
 The detailed task list is in [`Todo.md`](Todo.md).
 
@@ -101,7 +101,7 @@ Two virtual hosts communicate through a shared two-line channel and a singleton 
                 TX                              RX
                  │                              ▲
                  └──────────┐ --------┌─────────┘
-                            ▼        
+                            ▼
                       Virtual Channel
 ```
 
@@ -297,13 +297,27 @@ Application Data → Segmenter → Frame → Serialization → TX
 → Received Application Data
 ```
 
-The modular tests exercise logger behavior and ideal/noisy virtual-channel behavior. ACK/NACK factory tests can be added independently before full retransmission behavior is integrated.
+The modular tests exercise logger behavior and ideal/noisy virtual-channel behavior. `tests/ACK_NCK.py` demonstrates NACK feedback followed by retransmission and successful decoding; automatic receiver-driven retransmission remains future protocol work.
 
 ---
 
 ## Setup and Usage
 
-This section is reserved for the complete setup guide and will be expanded with:
+Run the interactive CLI from the project root:
+
+```text
+python mainCLI.py
+```
+
+Or provide options directly:
+
+```text
+python mainCLI.py --host A --data Z --data-type string --data-size 1
+```
+
+The current live TX/RX path supports one-byte CLI frames. The emulator still contains protocol-level 8/16/24-bit frame support, but multi-byte live transport remains planned work.
+
+For the test suite:
 
 - Cloning the repository.
 - Creating and activating a Python virtual environment.
@@ -317,14 +331,14 @@ For now, run commands from the project root so the `uart_emulator` package can b
 
 ---
 
-## Planned Work
+## Remaining Work
 
 The remaining Version 2 work is tracked in [`Todo.md`](Todo.md):
 
-1. Complete the CLI with input validation and frame-width selection.
-2. Make the selected frame width consistent through TX and RX.
-3. Add deliberate corruption tests and complete ACK/NACK response/retransmission behavior.
-4. Add error handling, edge-case tests, and final documentation.
+1. Make selected frame width consistent through live TX and RX.
+2. Integrate automatic ACK/NACK response and retransmission.
+3. Add FS, timeout, and complete edge-case coverage.
+4. Finish documentation and naming cleanup.
 
 Waveform visualization and a Flask web interface are optional future enhancements. They are not required for the core UART emulator to be complete.
 
