@@ -47,7 +47,28 @@ def reset_simulation():
 	VirtualChannel._instance = None
 	if hasattr(VirtualChannel, "_initialized"):
 		del VirtualChannel._initialized
-
+def get_clock(baud_rate=9600):
+	"""Return the singleton clock instance, creating it if necessary."""
+	if Clock._instance is None:
+		Clock(baud_rate=baud_rate)
+	return Clock._instance
+def get_tick(clk):
+	"""Return the current tick from the singleton clock instance."""
+	if clk is None:
+		clk = get_clock()
+	return clk.curr_tick()
+def Create_VirtualChannel(is_ideal=True, bit_flip_rate=0.0, baud_rate=9600):
+	"""Create a virtual channel instance, resetting the singleton if necessary."""
+	reset_simulation()
+	return VirtualChannel(
+		is_ideal=is_ideal,
+		bit_flip_rate=bit_flip_rate,
+		baud_rate=baud_rate,
+	)
+def Noop():
+	"""A no-operation function for testing purposes."""
+	"""placeholder for not transmitting on bit boundary if no data is available"""
+	pass
 
 def create_duplex_hosts(
 	baud_rate=9600,
