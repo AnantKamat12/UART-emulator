@@ -107,8 +107,8 @@
 ### Remaining Work
 
 - [ ] Rebuild and improve `ACK_NCK.py` retransmission test
-- [ ] Rebuild and improve `mainCLI.py` interactive CLI
-- [ ] Integrate ACK/NACK feedback into Host and Receiver
+- [ ] Rebuild and improve `mainCLI.py` interactive CLI//step by step show frame creation-segmentation-trasnsmission status-ack/nck(in cli test clock can be sidelined trasnmitting data till user wills todo, dont ask closk as input/no start tick/end tick, ask baud rate,ideal/non ideal,ack-nack,data-size,data-type etc etc)
+- [ ] Integrate ACK/NACK feedback into Host and Receiver/or make another file which will handle ack/nck mechanism not the individaul test case itself
 - [ ] Implement retransmission after NACK
 - [ ] Add noisy-channel ACK/NACK tests
 - [ ] Complete CLI input validation and transmission flow
