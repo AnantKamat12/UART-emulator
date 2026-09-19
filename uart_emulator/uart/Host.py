@@ -82,25 +82,47 @@ class Host:
     def step(self):
         """Advance one simulation tick and let TX/RX operate at that tick."""
         current_tick = self.clk.curr_tick()
+        received_frame = None
 
         if self.tx is not None:
             self.tx.step(current_tick)
 
         if self.rx is not None:
-            frame = self.rx.step(
+            received_frame = self.rx.step(
                 current_tick,
                 self.host_receive_lane
             )
 
-            if frame is not None:
+            if received_frame is not None:
+                received_bytes = received_frame.to_bytes(
+                    2,
+                    byteorder="big"
+                )
+                decoded_data = self.rck_reassembler.decode(
+                    received_bytes,
+                    data_size=1
+                )
                 message = (
-                    f"[{self.hostname}] received complete frame: "
-                    f"{frame:016b}"
+                    f"[{self.hostname}] Host Received complete frame: "
+                    f"{received_frame:016b}"
                 )
                 self.logger.write(message, current_tick)
                 logger.logprint(message, current_tick)
+                decoded_message = (
+                    f"[{self.hostname}] decoded data: {decoded_data!r}"
+                )
+                self.logger.write(decoded_message, current_tick)
+                logger.logprint(decoded_message, current_tick)
 
-                # Later we can pass this into your reassembler
-                self.rck_reassembler.decode(frame)
-                #would be handled later by test cases
+        return received_frame
+    def get_joined_rcvd_data(self):
+        """Return the complete received data from the reassembler."""
+        if self.rck_reassembler is not None:
+            return self.rck_reassembler.rcvd_data_comb()
+        return None
+    def get_rcvd_data(self):
+        """Return the complete received data from the reassembler."""
+        if self.rck_reassembler is not None:
+            return self.rck_reassembler.rcvd_data
+        return None
             
