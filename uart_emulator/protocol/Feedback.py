@@ -1,7 +1,7 @@
 
 from uart_emulator.protocol.Frames import Frame
 
-
+#gives you ack/nack frame to send feedback ,expects status ==OK for ack and !OK for nck
 class Feedback():
     def __init__(self, hosta, hostb):
         self.hosta = hosta

@@ -8,9 +8,12 @@ if str(ROOT) not in sys.path:
 from uart_emulator.protocol.ACK import ACK
 from uart_emulator.protocol.Frames import Deserialise, Frame
 from uart_emulator.protocol.Reassembler import Reassembler
+from uart_emulator.protocol.Segmenter import segmenter
 from uart_emulator.simulation.Timing import Clock
 from uart_emulator.simulation.VirtualChannel import VirtualChannel
+from uart_emulator.infrastructure.Logger import logger
 from uart_emulator.uart.Host import Host
+from uart_emulator.uart.UARTConnection import UARTConnection
 import numpy as np
 
 def get_bit_stream(size=8):
@@ -37,6 +40,10 @@ def get_random_string(strings=None, size=1):
 		]
 	return np.random.choice(strings, size=size).tolist()
 
+def UART_Host_Connection(host_a, host_b,data_type=1):
+	"""Establish a UART connection between two hosts."""
+	uart_connection = UARTConnection(host_a, host_b, data_type=data_type)
+	return uart_connection
 
 def reset_simulation():
 	"""Reset the singleton clock and virtual channel for a fresh test."""
@@ -47,30 +54,16 @@ def reset_simulation():
 	VirtualChannel._instance = None
 	if hasattr(VirtualChannel, "_initialized"):
 		del VirtualChannel._initialized
-def get_clock(baud_rate=9600):
-	"""Return the singleton clock instance, creating it if necessary."""
-	if Clock._instance is None:
-		Clock(baud_rate=baud_rate)
-	return Clock._instance
-def get_tick(clk):
-	"""Return the current tick from the singleton clock instance."""
-	if clk is None:
-		clk = get_clock()
-	return clk.curr_tick()
-def Create_VirtualChannel(is_ideal=True, bit_flip_rate=0.0, baud_rate=9600):
-	"""Create a virtual channel instance, resetting the singleton if necessary."""
-	reset_simulation()
-	return VirtualChannel(
-		is_ideal=is_ideal,
-		bit_flip_rate=bit_flip_rate,
-		baud_rate=baud_rate,
-	)
-def Noop():
-	"""A no-operation function for testing purposes."""
-	"""placeholder for not transmitting on bit boundary if no data is available"""
-	pass
 
-def create_duplex_hosts(
+def noop():
+	"""Keep the simulation idle when no transmission is scheduled."""
+	return None
+
+def get_segmented_data(data, max_segment_size=8):
+    """Split application data into transport-sized byte segments."""
+    return segmenter(max_segment_size=max_segment_size).segment_data(data)
+
+def Create_duplex_hosts(
 	baud_rate=9600,
 	data_type=1,
 	is_ideal=True,
@@ -78,7 +71,7 @@ def create_duplex_hosts(
 ):
 	"""Create two connected hosts and return ``(host_a, host_b, clock)``."""
 	reset_simulation()
-	VirtualChannel(
+	vc=VirtualChannel(
 		is_ideal=is_ideal,
 		bit_flip_rate=bit_flip_rate,
 		baud_rate=baud_rate,
@@ -100,7 +93,7 @@ def create_duplex_hosts(
 	)
 	host_a.setuphost()
 	host_b.setuphost()
-	return host_a, host_b, host_a.clk
+	return host_a, host_b, host_a.clk,vc
 
 
 def build_frame(data, data_size=1, parity=0):
@@ -191,6 +184,19 @@ def close_hosts(*hosts):
 	"""Close host loggers after a custom test or CLI run."""
 	for host in hosts:
 		host.logger.close()
+
+def log_received_data(host, separate_data, joined_data, tick=None):
+	"""Write a host's separate and joined data to host and simulation logs."""
+	if tick is None:
+		tick = host.clk.curr_tick()
+
+	messages = [
+		f"[{host.hostname}] received data (separate): {separate_data!r}",
+		f"[{host.hostname}] received data (joined): {joined_data!r}",
+	]
+	for message in messages:
+		host.host_logger.write(message, tick)
+		logger.logprint(message, tick)
 if __name__ == "__main__":
         
         
