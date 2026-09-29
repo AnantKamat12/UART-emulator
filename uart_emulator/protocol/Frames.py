@@ -144,21 +144,52 @@ class Deserialise:
             raise ValueError(f"Unsupported frame size: {expected_bytes} bytes")
 
         return self.decode_data(frame)
+    @staticmethod
+    def decode_ack_nck_frame(frame):
+        """Decode a serialized ACK/NACK control frame.
 
-        
-# TODO:
-# Instead of raising ValueError for FS, PE and FE, update the
-# receiver FSM state/error status so that the FSM can handle
-# the error and trigger a frame re-request/retransmission.
-#
-# FS → False Start
-# PE → Parity Error
-# FE → Framing Error
-#
-# Future flow:
-# RX FSM → detect error → set error state → request retransmission
-#        → discard corrupted frame → receive retransmitted frame
-    
+        Returns a tuple of (status, payload), where payload is one of
+        ``ACK`` or ``NACK`` when the frame is valid, and the raw integer data
+        otherwise.
+        """
+        if isinstance(frame, int):
+            frame_value = frame
+        else:
+            payload = bytes(frame)
+            if len(payload) != 2:
+                raise ValueError(
+                    "ACK/NACK frame must contain exactly 2 bytes; "
+                    f"got {len(payload)}"
+                )
+            frame_value = st.unpack(">H", payload)[0]
+
+        start = (frame_value >> 12) & 0xF
+        data = (frame_value >> 4) & 0xFF
+        parity_bit = (frame_value >> 3) & 0x01
+        stop = frame_value & 0x7
+
+        status = "OK"
+        if start != 0b0101:
+            status = "FS"
+
+        count = bin(data).count("1")
+        expected_parity = count % 2
+        if parity_bit != expected_parity:
+            status = "PE"
+
+        if stop != 0b010:
+            status = "FE"
+
+        if status != "OK":
+            return status, data
+
+        if data == ACK.ACK.value:
+            return status, ACK.ACK.name
+        if data == ACK.NACK.value:
+            return status, ACK.NACK.name
+        return status, data
+
+
 if __name__ == "__main__":
     sg = sg(max_segment_size=8)
 
