@@ -28,6 +28,11 @@ def get_random_bytes(size):
     """return random bytes of the given size as a list of bytes"""
     arr=np.random.randint(0, 256, size=size).tolist()
     return arr
+def get_last_reassembled_data(reassembler_obj):
+	"""Return the most recently decoded payload from a reassembler."""
+	return reassembler_obj.get_last_data
+
+
 def get_random_string(strings=None, size=1):
 	"""Return random strings from the provided list or a built-in default list."""
 	if strings is None or len(strings) == 0:

@@ -12,6 +12,7 @@ class Reassembler:
 
         self.data_type = data_type
         self.rcvd_data = []
+        self.last_data=None
 
     @staticmethod
     def finddollar(data):
@@ -41,6 +42,7 @@ class Reassembler:
                     data = raw_data.to_bytes(data_size, byteorder='big')
 
                 self.rcvd_data.append(data)
+                self.last_data=data
                 return data
         else:
             if status!="OK":
@@ -61,7 +63,9 @@ class Reassembler:
 
                 self.rcvd_data.append(data)
                 return data
-
+    @property
+    def get_last_data(self):
+        return self.last_data
     def get_data(self):
         return self.rcvd_data
     def rcvd_data_comb(self):
