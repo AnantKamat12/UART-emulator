@@ -59,6 +59,16 @@ def validate_data_size(value):
     return data_size
 
 
+def validate_baud_rate(value):
+    try:
+        baud_rate = int(value)
+    except (TypeError, ValueError) as error:
+        raise ValueError("enter a positive baud rate, e.g. 9600") from error
+    if baud_rate <= 0:
+        raise ValueError("baud rate must be greater than zero")
+    return baud_rate
+
+
 def parse_data(data_type, value, data_size=1):
     """Convert CLI text into the selected application data type."""
     if data_type == "integer":
@@ -94,7 +104,7 @@ def parse_data(data_type, value, data_size=1):
     return value
 
 
-def get_configuration(args):
+def get_configuration(args, prompt_baud_rate=False):
     """Collect CLI options from arguments or interactive prompts."""
     host = (
         validate_host(args.host)
@@ -119,6 +129,19 @@ def get_configuration(args):
             "1",
         )
     )
+    baud_rate = (
+        validate_baud_rate(args.baud_rate)
+        if args.baud_rate is not None
+        else (
+            prompt_until_valid(
+                "Baud rate in bits per second",
+                validate_baud_rate,
+                "9600",
+            )
+            if prompt_baud_rate
+            else 9600
+        )
+    )
 
     examples = {
         "string": "plain text; enter hello to send the word hello",
@@ -137,7 +160,7 @@ def get_configuration(args):
         if args.data is not None
         else prompt_until_valid(f"Data ({examples[data_type]})", data_parser)
     )
-    return host, data_type, data_size, data
+    return host, data_type, data_size, baud_rate, data
 
 
 def run_once(host_name, data_type, data_size, data, baud_rate=9600):
@@ -213,7 +236,7 @@ def build_parser():
     parser.add_argument("--data")
     parser.add_argument("--data-type", choices=["string", "integer", "bytes"])
     parser.add_argument("--data-size", type=int, choices=[1, 2, 3])
-    parser.add_argument("--baud-rate", type=int, default=9600)
+    parser.add_argument("--baud-rate", type=int)
     return parser
 
 
@@ -227,11 +250,14 @@ def run_modular_tests():
     return completed.returncode
 
 
-def run_uart_cli(args):
+def run_uart_cli(args, prompt_baud_rate=False):
     """Run the existing UART CLI flow (menu option 1)."""
     try:
-        host, data_type, data_size, data = get_configuration(args)
-        result = run_once(host, data_type, data_size, data, args.baud_rate)
+        host, data_type, data_size, baud_rate, data = get_configuration(
+            args,
+            prompt_baud_rate=prompt_baud_rate,
+        )
+        result = run_once(host, data_type, data_size, data, baud_rate)
     except (TypeError, ValueError) as error:
         print(f"Input error: {error}")
         return 2
@@ -239,6 +265,7 @@ def run_uart_cli(args):
     print(f"Transmitting host : HOST_{host}")
     print(f"Data type         : {data_type}")
     print(f"Data size         : {data_size} byte(s)")
+    print(f"Baud rate         : {baud_rate} bps")
     print(f"Transmitted data  : {result['sent_data']!r}")
     print(f"Received frames   : {len(result['received_frames'])}")
     print(f"Received data     : {result['received_data']!r}")
@@ -262,7 +289,7 @@ def main():
     if choice == "0":
         return run_modular_tests()
     if choice == "1":
-        return run_uart_cli(args)
+        return run_uart_cli(args, prompt_baud_rate=True)
 
     print("Invalid option. Choose 0 or 1.")
     return 2

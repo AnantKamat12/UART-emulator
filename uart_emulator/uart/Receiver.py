@@ -1,4 +1,5 @@
 from uart_emulator.simulation.VirtualChannel import VirtualChannel as VC
+from uart_emulator.simulation.Timing import ticks_per_bit_for_baud
 
 
 class Rx:
@@ -17,7 +18,7 @@ class Rx:
         self.hostname = hostname
         self.frame_bits = data_size * 8 + 8
 
-        self.ticks_per_bit = 100
+        self.ticks_per_bit = ticks_per_bit_for_baud(baud_rate)
 
         self.frame = 0
         self.bit_index = 0

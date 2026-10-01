@@ -16,10 +16,18 @@ from uart_emulator.infrastructure.All_APIs_for_custom_tests import (
 
 
 class TestLiveFrameWidths(unittest.TestCase):
-    def transmit_and_decode(self, payload, data_type, data_size, max_ticks=5000):
+    def transmit_and_decode(
+        self,
+        payload,
+        data_type,
+        data_size,
+        max_ticks=5000,
+        baud_rate=9600,
+    ):
         host_a, host_b, _, _ = Create_duplex_hosts(
             data_type=data_type,
             data_size=data_size,
+            baud_rate=baud_rate,
         )
         try:
             with redirect_stdout(io.StringIO()):
@@ -70,6 +78,30 @@ class TestLiveFrameWidths(unittest.TestCase):
 
         self.assertFalse(result["success"], result)
         self.assertIsNone(result["received_frame"])
+
+    def test_live_transfer_uses_selected_baud_rate(self):
+        host_a, host_b, _, _ = Create_duplex_hosts(
+            data_type=1,
+            data_size=1,
+            baud_rate=19200,
+        )
+        try:
+            self.assertEqual(host_a.tx.ticks_per_bit, 50)
+            self.assertEqual(host_b.rx.ticks_per_bit, 50)
+            with redirect_stdout(io.StringIO()):
+                result = transmit_one_frame(
+                    host_a,
+                    host_b,
+                    "A",
+                    data_type=1,
+                    data_size=1,
+                    start_tick=50,
+                    max_ticks=1000,
+                )
+            self.assertTrue(result["success"], result)
+            self.assertEqual(result["received_data"], "A")
+        finally:
+            close_hosts(host_a, host_b)
 
     def test_byte_frames_at_all_widths(self):
         values = {

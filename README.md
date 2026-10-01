@@ -294,7 +294,7 @@ Choose:
 - `0` — run the complete modular unit-test suite.
 - `1` — configure and run a UART transmission.
 
-The transmission prompts ask for host (`A`/`B`), type (`string`/`integer`/`bytes`), data width (1/2/3 bytes), and the payload. Invalid answers are rejected at the current prompt and requested again.
+The transmission prompts ask for host (`A`/`B`), type (`string`/`integer`/`bytes`), data width (1/2/3 bytes), baud rate, and the payload. The baud-rate prompt defaults to 9600 bps; invalid answers are rejected at the current prompt and requested again.
 
 The selected width is the **maximum payload bytes in one frame**, not a required input length. Longer strings and byte sequences are split across successive frames. The 8-/16-/24-bit payload fields create total frame lengths of 16/24/32 bits respectively.
 
@@ -313,6 +313,7 @@ Direct invocation is also supported; when command-line arguments are supplied, t
 python mainCLI.py --host B --data-type string --data-size 2 --data ab
 python mainCLI.py --host A --data-type integer --data-size 2 --data 4660
 python mainCLI.py --host B --data-type bytes --data-size 2 --data "41 42"
+python mainCLI.py --host A --data-type string --data-size 1 --baud-rate 19200 --data A
 ```
 
 The result reports transmitted data, number of received frames, reassembled data, simulation ticks, and success/failure. In a final partial bytes frame, the data field is zero-padded for transmission and the CLI removes that padding from the returned payload.
@@ -332,7 +333,7 @@ The modular suite includes frame serialization/deserialization, all data widths 
 
 ## Known Scope Boundaries
 
-- TX/RX currently use a fixed 100 simulation ticks per bit. The `--baud-rate` argument is accepted, but does not yet change TX/RX bit spacing.
+- TX/RX use 100 simulation ticks per bit at 9600 baud; higher baud rates use proportionally fewer ticks per bit (rounded to an integer, with a minimum of one tick).
 - ACK/NACK retransmission is implemented and tested in the dedicated ACK/NACK flow; ordinary CLI sends do not automatically request feedback or retry.
 - Plotting and a graphical/web interface are optional extensions, not required to run or test the UART core.
 
