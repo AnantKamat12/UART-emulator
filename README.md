@@ -13,8 +13,7 @@ The project models communication from application data down to individual transm
 ## Project Status
 
 **Version 2 core is complete.** Configurable 8-, 16-, and 24-bit payload widths are supported end-to-end through frame serialization, TX, the virtual channel, RX, and reassembly. The project includes a menu-driven CLI, reusable test APIs, host/session-specific logs, modular tests, full-duplex tests, and a dedicated ACK/NACK retransmission experiment.
-
-The completion checklist is in [`Todo.md`](Todo.md). Known boundaries—such as baud-rate-dependent bit timing and generic ACK/NACK integration into every host transfer—are listed near the end of this README.
+The completion checklist is in [`Todo.md`](Todo.md). Known boundaries—such as generic ACK/NACK integration into every host transfer—are listed near the end of this README.
 
 ---
 
