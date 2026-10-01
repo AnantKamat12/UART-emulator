@@ -1,13 +1,21 @@
 from uart_emulator.simulation.VirtualChannel import VirtualChannel as VC
-from uart_emulator.infrastructure.Logger import logger
 
 
 class Rx:
-    def __init__(self, baud_rate=9600, event_logger=None, hostname="HOST"):
+    def __init__(
+        self,
+        baud_rate=9600,
+        event_logger=None,
+        hostname="HOST",
+        data_size=1,
+    ):
+        if data_size not in (1, 2, 3):
+            raise ValueError("data_size must be 1, 2, or 3 bytes")
         self.baud_rate = baud_rate
         self.vc = VC()
         self.logger = event_logger
         self.hostname = hostname
+        self.frame_bits = data_size * 8 + 8
 
         self.ticks_per_bit = 100
 
@@ -34,7 +42,8 @@ class Rx:
         message = f"[{self.hostname}] RX bit={bit}"
         if self.logger is not None:
             self.logger.write(message, current_tick)
-        logger.logprint(message, current_tick)
+        if self.logger is not None:
+            self.logger.logprint(message, current_tick)
 
         if not self.receiving:
             self.receiving = True
@@ -44,15 +53,16 @@ class Rx:
         self.frame |= (bit << self.bit_index)
         self.bit_index += 1
 
-        if self.bit_index == 16:
+        if self.bit_index == self.frame_bits:
             received_frame = self.frame
             message = (
                 f"[{self.hostname}] RX complete frame="
-                f"{received_frame:016b}"
+                f"{received_frame:0{self.frame_bits}b}"
             )
             if self.logger is not None:
                 self.logger.write(message, current_tick)
-            logger.logprint(message, current_tick)
+            if self.logger is not None:
+                self.logger.logprint(message, current_tick)
             self.reset_receiver()
             return received_frame
 

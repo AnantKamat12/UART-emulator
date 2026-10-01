@@ -73,6 +73,8 @@ def Create_duplex_hosts(
 	data_type=1,
 	is_ideal=True,
 	bit_flip_rate=0.0,
+	logger_class=logger,
+	data_size=1,
 ):
 	"""Create two connected hosts and return ``(host_a, host_b, clock)``."""
 	reset_simulation()
@@ -88,6 +90,8 @@ def Create_duplex_hosts(
 		data_type=data_type,
 		host_transmit_lane=0,
 		hostname="HOST_A",
+		logger_class=logger_class,
+		data_size=data_size,
 	)
 	host_b = Host(
 		host_type=2,
@@ -95,6 +99,8 @@ def Create_duplex_hosts(
 		data_type=data_type,
 		host_transmit_lane=1,
 		hostname="HOST_B",
+		logger_class=logger_class,
+		data_size=data_size,
 	)
 	host_a.setuphost()
 	host_b.setuphost()
@@ -142,7 +148,7 @@ def transmit_one_frame(
 	"""Transmit one frame and return its received and decoded values.
 
 	The returned dictionary is intentionally simple for assertions and CLI
-	output. The current ``Tx`` implementation transmits 16 bits per frame.
+	output. Configure the hosts with the same ``data_size`` as this frame.
 	"""
 	frame_bytes = build_frame(data, data_size=data_size)
 	frame_value = int.from_bytes(frame_bytes, byteorder="big")
@@ -201,7 +207,7 @@ def log_received_data(host, separate_data, joined_data, tick=None):
 	]
 	for message in messages:
 		host.host_logger.write(message, tick)
-		logger.logprint(message, tick)
+		host.host_logger.logprint(message, tick)
 if __name__ == "__main__":
         
         

@@ -4,13 +4,14 @@ from uart_emulator.infrastructure.Logger import logger
 
 class UARTConnection:
 
-    def __init__(self, baud_rate=9600, data_type=1):
+    def __init__(self, baud_rate=9600, data_type=1, data_size=1):
         # Host A: TX on line 0, RX on line 1
         self.hostA = Host(
             host_type=2,
             baud_rate=baud_rate,
             data_type=data_type,
-            host_transmit_lane=0
+            host_transmit_lane=0,
+            data_size=data_size,
         )
 
         # Host B: TX on line 1, RX on line 0
@@ -18,7 +19,8 @@ class UARTConnection:
             host_type=2,
             baud_rate=baud_rate,
             data_type=data_type,
-            host_transmit_lane=1
+            host_transmit_lane=1,
+            data_size=data_size,
         )
 
         self.hostA.setuphost()

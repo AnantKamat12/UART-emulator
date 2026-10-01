@@ -3,7 +3,9 @@
 # ============================================================
 
 import enum
-import os
+from pathlib import Path
+
+UART_LOG_DIR = Path(__file__).resolve().parents[2] / "UARTlogs"
 
 # ============================================================
 # HOST TYPE
@@ -20,6 +22,7 @@ class HostType(enum.Enum):
 # ============================================================
 
 class logger:
+    simulation_label = None
 
     def __init__(self, log_id, hostname, start_tick, host_type,logger_name=None):
         self.log_id = log_id
@@ -42,9 +45,9 @@ class logger:
             self.filename = f"{str(self.logger_name).lower()}.log"
         else:
             self.filename = f"{str(self.hostname).lower()}.log"
-        os.makedirs("UARTlogs", exist_ok=True)
+        UART_LOG_DIR.mkdir(parents=True, exist_ok=True)
         self.file = open(
-            f"UARTlogs/{self.filename}",
+            UART_LOG_DIR / self.filename,
             "w",
             encoding="utf-8"
         )
@@ -107,16 +110,14 @@ class logger:
     @classmethod
     def logprint(cls, logs, tick):
         filename = "simulation.log"
-        os.makedirs("UARTlogs", exist_ok=True)
+        UART_LOG_DIR.mkdir(parents=True, exist_ok=True)
         file = open(
-            f"UARTlogs/{filename}",
+            UART_LOG_DIR / filename,
             "a",
             encoding="utf-8"
         )
-        log_entry = (
-            f"[tick={tick}] "
-            f"{logs}\n"
-        )
+        label = f"[{cls.simulation_label}] " if cls.simulation_label else ""
+        log_entry = f"{label}[tick={tick}] {logs}\n"
         file.write(log_entry)
         file.close()
         #print for terminal

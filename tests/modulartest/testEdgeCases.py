@@ -25,6 +25,20 @@ class TestReassemblerStatuses(unittest.TestCase):
 
 		self.assertEqual(result, "A")
 
+	def test_fs_status_is_reported(self):
+		frame = bytearray(build_frame("A", data_size=1))
+		frame_value = int.from_bytes(frame, byteorder="big") ^ (1 << 12)
+		corrupted_frame = frame_value.to_bytes(2, byteorder="big")
+
+		result = decode_frame(
+			corrupted_frame,
+			data_type=1,
+			data_size=1,
+			non_ideal=True,
+		)
+
+		self.assertEqual(result, "Corrupted Frame due to FS,data lost")
+
 	def test_pe_status_is_reported(self):
 		frame = bytearray(build_frame("A", data_size=1))
 		frame_value = int.from_bytes(frame, byteorder="big") ^ (1 << 3)

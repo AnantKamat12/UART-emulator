@@ -1,13 +1,14 @@
 # UART Frame
 
-The UART Emulator currently models a fixed 16-bit UART-like frame.
+The UART Emulator supports UART-like frames with 8-, 16-, or 24-bit data fields.
+The start, parity, and stop fields add another 8 bits to each complete frame.
 
 ## Frame Format
 
 ```text
 ┌────────┬──────────┬────────┬────────┐
 │ START  │   DATA   │ PARITY │  STOP  │
-│ 4 bit  │  8 bits  │ 1 bit  │ 3 bits │
+│ 4 bit  │ 8/16/24  │ 1 bit  │ 3 bits │
 └────────┴──────────┴────────┴────────┘
 ```
 
@@ -15,7 +16,7 @@ The default values are:
 
 ```text
 START  = 0101
-DATA   = 8 bits
+DATA   = 8, 16, or 24 bits
 PARITY = 1 bit
 STOP   = 010
 ```
@@ -23,7 +24,7 @@ STOP   = 010
 Total:
 
 ```text
-4 + 8 + 1 + 3 = 16 bits
+4 + (8, 16, or 24) + 1 + 3 = 16, 24, or 32 bits
 ```
 
 Example:
@@ -42,23 +43,25 @@ The data field above represents the character `A`.
 
 A frame can be constructed from:
 
-* `int`
-* `str`
-* `bytes`
-* `bytearray`
+- `int`
+- `str`
+- `bytes`
+- `bytearray`
 
-The input is converted to an 8-bit data value.
+`data_size` selects the data-field width in bytes: 1, 2, or 3.
 
 ```python
 frame = Frame(
     start=0b0101,
     parity=0,
-    data=b"A",
+    data=b"AB",
+    data_size=2,
     stop=0b010
 )
 ```
 
-The current implementation masks the resulting data value to 8 bits.
+The payload is converted to a big-endian integer and masked to the selected
+data-field width.
 
 ---
 
@@ -97,30 +100,12 @@ START | DATA | PARITY | STOP
 
 ## Serialization
 
-The complete frame is represented internally as a 16-bit integer.
-
-It is serialized using:
-
-```python
-struct.pack(">H", value)
-```
-
-`>` means:
+The complete frame is represented internally as an integer and serialized to
+`data_size + 1` bytes. The serialized lengths are 2, 3, and 4 bytes for
+1-, 2-, and 3-byte data fields respectively. `>` means:
 
 ```text
 Big-endian
-```
-
-`H` means:
-
-```text
-Unsigned short = 16 bits
-```
-
-Therefore the result is exactly:
-
-```text
-2 bytes
 ```
 
 For example:
@@ -129,13 +114,13 @@ For example:
 serialized_frame = frame.serialise()
 ```
 
-The resulting bytes can then be converted to an integer for the current TX implementation.
+The resulting bytes can be converted to an integer for transmission.
 
 ---
 
 ## Transmission
 
-The current TX implementation transmits the serialized frame as a 16-bit integer.
+TX sends the configured frame width, calculated as `data_size * 8 + 8` bits.
 
 The bits are extracted using:
 
@@ -143,10 +128,13 @@ The bits are extracted using:
 bit = (frame >> bit_index) & 1
 ```
 
-with:
+with `bit_index` ranging from zero up to (but not including) the frame width.
+For example, the supported widths are:
 
 ```text
-bit_index = 0 ... 15
+data_size=1 → 16 frame bits
+data_size=2 → 24 frame bits
+data_size=3 → 32 frame bits
 ```
 
 Therefore transmission occurs:
@@ -164,10 +152,10 @@ At the current default configuration:
 100 simulation ticks / bit
 ```
 
-A complete 16-bit frame therefore requires approximately:
+A complete frame requires approximately:
 
 ```text
-16 × 100 = 1600 simulation ticks
+frame_bits × 100 simulation ticks
 ```
 
 of bit transmission time.
@@ -176,17 +164,14 @@ of bit transmission time.
 
 # Deserialization
 
-`Deserialise` converts the two serialized bytes back into a 16-bit integer.
-
-```python
-frame = struct.unpack(">H", frame_bytes)[0]
-```
+`Deserialise` converts the serialized bytes back into an integer using the
+configured `data_size`.
 
 The fields are then extracted using bit operations:
 
 ```text
-START  = bits 12–15
-DATA   = bits 4–11
+START  = the 4 bits immediately above the data field
+DATA   = bits 4 through (data_size * 8 + 3)
 PARITY = bit 3
 STOP   = bits 0–2
 ```
@@ -230,8 +215,8 @@ The received parity bit does not match the parity calculated from the received d
 
 This can occur when:
 
-* A data bit is changed.
-* The parity bit is changed.
+- A data bit is changed.
+- The parity bit is changed.
 
 The deserializer reports:
 
@@ -298,7 +283,8 @@ For example:
 "ANANT"
 ```
 
-is divided into 8-bit segments:
+is divided into segments matching the selected data-field width. With a
+one-byte data field, the segments are:
 
 ```text
 A
@@ -308,7 +294,8 @@ N
 T
 ```
 
-Each segment is then placed into a separate 16-bit UART frame.
+Each segment is then placed into a UART frame whose total width is 16, 24, or
+32 bits, depending on `data_size`.
 
 At the receiving side:
 
@@ -336,30 +323,28 @@ This allows the current implementation to demonstrate both frame-level transmiss
 
 Implemented:
 
-* Fixed 16-bit frame.
-* 4-bit start field.
-* 8-bit data field.
-* 1-bit parity field.
-* 3-bit stop field.
-* Even/odd parity calculation.
-* Serialization using Python `struct`.
-* Deserialization.
-* FS detection.
-* PE detection.
-* FE detection.
-* Bit-by-bit TX.
-* Bit-by-bit RX.
-* Simulation-clock timing.
-* Application-data segmentation.
-* Application-data reassembly.
+- Configurable 16-, 24-, and 32-bit total frame widths.
+- 4-bit start field.
+- 8-, 16-, or 24-bit data field.
+- 1-bit parity field.
+- 3-bit stop field.
+- Even/odd parity calculation.
+- Serialization using Python `struct`.
+- Deserialization.
+- FS detection.
+- PE detection.
+- FE detection.
+- Width-configurable bit-by-bit TX and RX.
+- Simulation-clock timing.
+- Application-data segmentation.
+- Application-data reassembly.
 
 Not currently implemented:
 
-* Automatic retransmission.
-* Error injection.
-* Random bit corruption.
-* Bit loss.
-* Channel noise.
-* Configurable channel delay.
+- Automatic retransmission.
+- Configurable random bit corruption through `VirtualChannel`.
+- Bit loss.
+- Channel noise.
+- Configurable channel delay.
 
-These should not be treated as current UART Emulator capabilities.
+Automatic retransmission and channel-delay simulation remain future work.
