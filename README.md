@@ -12,27 +12,9 @@ The project models communication from application data down to individual transm
 
 ## Project Status
 
-The original end-to-end UART path is working. Version 2 is improving the organization, observability, configurability, and usability of the simulation.
+**Version 2 core is complete.** Configurable 8-, 16-, and 24-bit payload widths are supported end-to-end through frame serialization, TX, the virtual channel, RX, and reassembly. The project includes a menu-driven CLI, reusable test APIs, host/session-specific logs, modular tests, full-duplex tests, and a dedicated ACK/NACK retransmission experiment.
 
-### Completed
-
-- Reorganized the project into Python packages.
-- Corrected imports after relocation.
-- Added host-specific and combined simulation logs.
-- Added protocol-layer frame data sizes of 8, 16, and 24 bits.
-- Added ACK/NACK frame generation through `Frame.gen_ack_nack_frame()`.
-- Added optional random bit flipping to `VirtualChannel`.
-- Added primitive, logger, noisy-channel, edge-case, and full-duplex tests.
-- Added an interactive CLI for one-byte transmissions.
-
-### Remaining protocol work
-
-- Make the selected frame width consistent through TX and RX.
-- Add complete ACK/NACK response and retransmission behavior.
-- Expand error handling and edge-case coverage.
-- Finish documentation and naming cleanup.
-
-The detailed task list is in [`Todo.md`](Todo.md).
+The completion checklist is in [`Todo.md`](Todo.md). Known boundaries—such as baud-rate-dependent bit timing and generic ACK/NACK integration into every host transfer—are listed near the end of this README.
 
 ---
 
@@ -42,9 +24,15 @@ The detailed task list is in [`Todo.md`](Todo.md).
 UART-emulator/
 ├── uart_emulator/
 │   ├── infrastructure/
+│   │   ├── ACK_NCK_logger.py
+│   │   ├── All_APIs_for_custom_tests.py
+│   │   ├── CLI_logger.py
+│   │   ├── FULL_DUPLEX_Logger.py
 │   │   └── Logger.py
 │   ├── protocol/
 │   │   ├── ACK.py
+│   │   ├── Feedback.py
+│   │   ├── FSM.py
 │   │   ├── Frames.py
 │   │   ├── Reassembler.py
 │   │   └── Segmenter.py
@@ -58,11 +46,15 @@ UART-emulator/
 │       ├── Transmitter.py
 │       └── UARTConnection.py
 ├── tests/
+│   ├── ACK_NCK_test.py
+│   ├── Full_Duplex_test.py
 │   ├── primitive_test.py
 │   └── modulartest/
-│       ├── noisychanneltest.py
-│       └── testlogger.py
+│       ├── runallunittest.py
+│       ├── testliveframewidths.py
+│       └── ...
 ├── mainCLI.py
+├── docs/
 ├── Todo.md
 └── README.md
 ```
@@ -195,7 +187,7 @@ ACK.ACK.value   # 0b0001
 ACK.NACK.value  # 0b0010
 ```
 
-The frame factory is implemented and tested independently. Receiver-driven ACK/NACK responses and retransmission are still planned work.
+The frame factory is tested independently. `tests/ACK_NCK_test.py` also exercises feedback, FSM transitions, and retransmission over a noisy channel. This is a dedicated test flow; ACK/NACK is not automatically enabled in every generic CLI or `Host` transmission.
 
 #### `Segmenter.py`
 
@@ -237,7 +229,7 @@ Provides a square-wave view of the simulation clock. It is a foundation for opti
 
 TX schedules and sends frame bits at bit boundaries. RX collects bits from the selected channel line and returns a complete received frame.
 
-The current TX/RX path still contains fixed-width assumptions from the original 16-bit flow. Making the selected 8/16/24-bit width fully dynamic through this path is tracked in [`Todo.md`](Todo.md).
+TX sends `data_size * 8 + 8` bits per frame, and RX collects the same configured width. The host factory accepts `data_size=1`, `2`, or `3` and passes it to both endpoints.
 
 #### `Host.py`
 
@@ -268,7 +260,7 @@ UARTlogs/
 └── simulation.log
 ```
 
-Host logs contain each host's local activity. The shared simulation log contains combined chronological activity and is also printed to the terminal through `logger.logprint()`.
+Host logs contain each host's local activity. The shared simulation log contains combined activity. CLI, ACK/NACK, and full-duplex runs have distinct labels in the shared log; each run starts a fresh simulation log. Log files are written under the workspace's `UARTlogs/` directory, regardless of the current working directory.
 
 Example:
 
@@ -279,82 +271,69 @@ Example:
 
 ---
 
-## Tests
+## Setup
 
-```text
-tests/
-├── primitive_test.py
-└── modulartest/
-    ├── noisychanneltest.py
-    └── testlogger.py
+From the project root, create and activate a virtual environment and install the project dependency:
+
+```powershell
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
 ```
 
-The primitive test verifies:
+## CLI Usage
 
-```text
-Application Data → Segmenter → Frame → Serialization → TX
-→ Virtual Channel → RX → Deserialization → Reassembler
-→ Received Application Data
-```
+Run the menu from the project root:
 
-The modular tests exercise logger behavior and ideal/noisy virtual-channel behavior. `tests/ACK_NCK.py` demonstrates NACK feedback followed by retransmission and successful decoding; automatic receiver-driven retransmission remains future protocol work.
-
----
-
-## Setup and Usage
-
-Run the interactive CLI from the project root:
-
-```text
+```powershell
 python mainCLI.py
 ```
 
-Or provide options directly:
+Choose:
 
-```text
-python mainCLI.py --host A --data Z --data-type string --data-size 1
+- `0` — run the complete modular unit-test suite.
+- `1` — configure and run a UART transmission.
+
+The transmission prompts ask for host (`A`/`B`), type (`string`/`integer`/`bytes`), data width (1/2/3 bytes), and the payload. Invalid answers are rejected at the current prompt and requested again.
+
+The selected width is the **maximum payload bytes in one frame**, not a required input length. Longer strings and byte sequences are split across successive frames. The 8-/16-/24-bit payload fields create total frame lengths of 16/24/32 bits respectively.
+
+### Payload examples
+
+| Type    | Example input     | Meaning                                                                                                                  |
+| ------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| String  | `ab`              | Two ASCII characters. At width 2, they fit in one frame.                                                                 |
+| Integer | `4660` at width 2 | One decimal integer, encoded as `0x1234`. Integers range from 0 to $2^{8w}-1$, where $w$ is the selected width in bytes. |
+| Bytes   | `41 42`           | Hexadecimal bytes `0x41 0x42`, which are ASCII `AB`.                                                                     |
+| Bytes   | `AB`              | One byte, `0xAB`; it is not the two-character text `AB`.                                                                 |
+
+Direct invocation is also supported; when command-line arguments are supplied, the menu is skipped:
+
+```powershell
+python mainCLI.py --host B --data-type string --data-size 2 --data ab
+python mainCLI.py --host A --data-type integer --data-size 2 --data 4660
+python mainCLI.py --host B --data-type bytes --data-size 2 --data "41 42"
 ```
 
-The current live TX/RX path supports one-byte CLI frames. The emulator still contains protocol-level 8/16/24-bit frame support, but multi-byte live transport remains planned work.
+The result reports transmitted data, number of received frames, reassembled data, simulation ticks, and success/failure. In a final partial bytes frame, the data field is zero-padded for transmission and the CLI removes that padding from the returned payload.
 
-For the test suite:
+## Test Commands
 
-- Cloning the repository.
-- Creating and activating a Python virtual environment.
-- Installing dependencies.
-- Running primitive and modular tests.
-- Running the CLI.
-- Inspecting generated logs.
-- Configuring ideal and noisy channel simulations.
+Run commands from the workspace root:
 
-For now, run commands from the project root so the `uart_emulator` package can be resolved correctly. Package-aware execution is preferred for tests and modules.
-
----
-
-## Remaining Work
-
-The remaining Version 2 work is tracked in [`Todo.md`](Todo.md):
-
-1. Make selected frame width consistent through live TX and RX.
-2. Integrate automatic ACK/NACK response and retransmission.
-3. Add FS, timeout, and complete edge-case coverage.
-4. Finish documentation and naming cleanup.
-
-Waveform visualization and a Flask web interface are optional future enhancements. They are not required for the core UART emulator to be complete.
-
----
-
-## Project Direction
-
-The goal is a clear, testable UART simulation with a usable command-line interface, not a dependency on a graphical interface.
-
-```text
-Working UART Core
-       │
-       ├── Package organization
-       ├── Configurable frame protocol
-       ├── Logging
-       ├── Noisy-channel experiments
-       ├── CLI
-       └── Tests
+```powershell
+python tests/modulartest/runallunittest.py
+python tests/ACK_NCK_test.py
+python tests/Full_Duplex_test.py
+python tests/primitive_test.py
 ```
+
+The modular suite includes frame serialization/deserialization, all data widths and types, live TX/channel/RX width checks, logger behavior, timing, host setup, edge cases, and virtual-channel tests. The separate ACK/NACK test exercises noisy-channel feedback and retransmission; the full-duplex test exercises simultaneous bidirectional traffic.
+
+## Known Scope Boundaries
+
+- TX/RX currently use a fixed 100 simulation ticks per bit. The `--baud-rate` argument is accepted, but does not yet change TX/RX bit spacing.
+- ACK/NACK retransmission is implemented and tested in the dedicated ACK/NACK flow; ordinary CLI sends do not automatically request feedback or retry.
+- Plotting and a graphical/web interface are optional extensions, not required to run or test the UART core.
+
+See [`Todo.md`](Todo.md) for the completed Version 2 checklist and scope notes.

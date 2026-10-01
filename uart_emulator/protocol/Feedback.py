@@ -1,6 +1,6 @@
 
 from uart_emulator.protocol.Frames import Frame
-
+#currently not used at all/ was implemented in testAck_NCk itself
 #gives you ack/nack frame to send feedback ,expects status ==OK for ack and !OK for nck
 class Feedback():
     def __init__(self, hosta, hostb):

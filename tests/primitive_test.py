@@ -8,7 +8,7 @@ from uart_emulator.protocol.Segmenter import segmenter
 from uart_emulator.protocol.Frames import Frame
 from uart_emulator.protocol.Reassembler import Reassembler
 
-
+#uses UARTConnection to run clk.ticks while other test cases themselves run the clock ticks, so that the test can be run in a single file without any other dependencies
 # ============================================================
 # CONFIGURATION
 # ============================================================

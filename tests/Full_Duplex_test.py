@@ -3,6 +3,7 @@ from collections import deque
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from uart_emulator.infrastructure.All_APIs_for_custom_tests import *
+from uart_emulator.infrastructure.FULL_DUPLEX_Logger import FULL_DUPLEX_Logger
 Simulation_time= 10**6
 Full_duplex_json={
 	"simulation_time": Simulation_time,
@@ -38,10 +39,12 @@ class FullDuplexTest:
 
 	def run(self):
 		"""Run the configured schedule and return received-data results."""
+		FULL_DUPLEX_Logger.mark_simulation_log()
 		self.host_a, self.host_b, self.clock, self.vc = Create_duplex_hosts(
 			is_ideal=self.is_ideal,
 			bit_flip_rate=self.bit_flip_rate,
 			baud_rate=self.baud_rate,
+			logger_class=FULL_DUPLEX_Logger,
 		)
 		hosts = {
 			"HOST_A": self.host_a,
@@ -83,8 +86,12 @@ class FullDuplexTest:
 					line=sender.host_transmit_lane,
 				)
 
-			self.host_a.step()
-			self.host_b.step()
+			# Transmit both lanes before either receiver reads this tick. This
+			# keeps both RX streams aligned to the same 100-tick bit boundaries.
+			self.host_a.transmit_step(current_tick)
+			self.host_b.transmit_step(current_tick)
+			self.host_a.receive_step(current_tick)
+			self.host_b.receive_step(current_tick)
 			self.clock.tick()
 
 		results = {

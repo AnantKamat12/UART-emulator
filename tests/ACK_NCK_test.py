@@ -16,7 +16,7 @@ from uart_emulator.infrastructure.All_APIs_for_custom_tests import (
     get_last_reassembled_data,
     log_received_data,
 )
-from uart_emulator.infrastructure.Logger import logger
+from uart_emulator.infrastructure.ACK_NCK_logger import ACK_NCK_logger
 from uart_emulator.protocol.ACK import ACK
 from uart_emulator.protocol.FSM import (
     Event,
@@ -58,6 +58,7 @@ class ACKNCKCommunication:
             for segment in self.data_segments
         ]
         self.simulation_time = simulation_time
+        ACK_NCK_logger.mark_simulation_log()
         (
             self.host_a,
             self.host_b,
@@ -67,6 +68,7 @@ class ACKNCKCommunication:
             is_ideal=is_ideal,
             bit_flip_rate=bit_flip_rate,
             data_type=data_type,
+            logger_class=ACK_NCK_logger,
         )
         self.sender_fsm = SenderFSM()
         self.receiver_fsm = ReceiverFSM()
@@ -85,7 +87,7 @@ class ACKNCKCommunication:
 
     def _log_event(self, host, message, tick):
         host.host_logger.write(message, tick)
-        logger.logprint(message, tick)
+        host.host_logger.logprint(message, tick)
 
     def _start_current_frame(self, tick):
         index = self.current_segment
