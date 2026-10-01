@@ -9,6 +9,7 @@
 - [x] Segment and reassemble string and byte payloads across frames; support width-sized integers.
 - [x] Provide reusable APIs for constructing hosts, frames, and simulations.
 - [x] Add the interactive CLI menu: run modular tests or run a transmission.
+- [x] Prompt for baud rate and apply it consistently to the clock, TX, and RX simulation timing.
 - [x] Validate CLI host, type, width, and payload inputs; show examples for strings, integers, and hexadecimal bytes.
 - [x] Queue multi-frame CLI payloads correctly and report received frames, payload, and status.
 - [x] Write host and combined simulation logs to the workspace `UARTlogs` directory, with CLI/ACK-NACK/full-duplex identification.
@@ -23,6 +24,6 @@
 These are not blockers for the completed Version 2 core:
 
 - ACK/NACK retransmission is exercised by the dedicated ACK/NACK test flow; it is not automatically enabled in every generic `Host` transmission.
-- The CLI currently uses the emulator's fixed 100-tick bit interval; full baud-rate-dependent TX/RX timing remains future work.
+- Baud-rate timing is quantized to whole simulation ticks; very high rates therefore use a minimum one-tick bit interval.
 - Exhaustive type annotations and docstrings across every legacy module are not part of the completed core.
 - Waveform visualization and a web UI are optional future enhancements.

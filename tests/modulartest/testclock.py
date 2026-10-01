@@ -4,7 +4,7 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from uart_emulator.simulation.Timing import Clock
+from uart_emulator.simulation.Timing import Clock, ticks_per_bit_for_baud
 
 
 def reset_clock():
@@ -31,6 +31,11 @@ class TestClock(unittest.TestCase):
         self.assertEqual(second.curr_tick(), 0)
         self.assertEqual(first.tick(), 1)
         self.assertEqual(second.curr_tick(), 1)
+
+    def test_higher_baud_uses_fewer_simulation_ticks_per_bit(self):
+        self.assertEqual(ticks_per_bit_for_baud(9600), 100)
+        self.assertEqual(ticks_per_bit_for_baud(19200), 50)
+        self.assertEqual(ticks_per_bit_for_baud(4800), 200)
 
 
 if __name__ == "__main__":

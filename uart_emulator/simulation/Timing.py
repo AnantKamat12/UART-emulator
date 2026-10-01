@@ -1,3 +1,10 @@
+def ticks_per_bit_for_baud(baud_rate):
+    """Convert a baud rate to integer simulation ticks per bit."""
+    if baud_rate <= 0:
+        raise ValueError("baud_rate must be a positive integer")
+    return max(1, round(100 * 9600 / baud_rate))
+
+
 class Clock:
     _instance = None
 
@@ -13,7 +20,7 @@ class Clock:
         self.baud_rate = baud_rate
         self.current_tick = current_tick
         # 1 bit at 9600 baud is represented as 100 simulator ticks.
-        self.no_of_ticks_per_bit = 100 * (baud_rate / 9600)
+        self.no_of_ticks_per_bit = ticks_per_bit_for_baud(baud_rate)
         self._initialized = True
 
     def tick(self):
